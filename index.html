@@ -12,14 +12,19 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="./"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span> Distillation Lab</a>
-      <nav class="nav-links" aria-label="Lesson sections">
-        <a href="#setup">Design inputs</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#gilliland">Gilliland</a><a href="#dof-calculation">DOF proof</a>
+      <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span> Distillation Lab</a>
+      <nav class="page-tabs" aria-label="Lab pages">
+        <a href="index.html" aria-current="page">Interactive Lab</a>
+        <a href="theory.html">Theory</a>
+        <a href="python.html">Python walkthrough</a>
       </nav>
       <button class="quiet-button" id="open-notes" type="button">Model notes</button>
     </div>
   </header>
   <main class="container">
+    <nav class="nav-links" aria-label="Lesson sections">
+      <a href="#setup">Design inputs</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#gilliland">Gilliland</a><a href="#dof-calculation">DOF proof</a>
+    </nav>
     <section class="intro" aria-labelledby="page-title">
       <div class="hero-copy">
         <p class="eyebrow">CHEMICAL ENGINEERING / SEPARATIONS</p>
@@ -39,11 +44,14 @@
             <h2 id="equipment-title">Follow the column flows</h2>
             <p class="connection-caption">Flow basis for the working case: 100 mol of feed.</p>
           </div>
-          <label class="equipment-mode"><span class="sr-only">Column operating case</span><select id="equipment-mode">
-            <option value="design">Working design</option>
-            <option value="total">Total reflux · Fenske</option>
-            <option value="minimum">Minimum reflux · Underwood</option>
-          </select></label>
+          <div class="equipment-mode option-with-help" data-option-help="equipmentMode">
+            <label class="sr-only" for="equipment-mode">Column operating case</label>
+            <select id="equipment-mode">
+              <option value="design">Working design</option>
+              <option value="total">Total reflux · Fenske</option>
+              <option value="minimum">Minimum reflux · Underwood</option>
+            </select>
+          </div>
         </div>
         <div class="equipment-diagram">
           <canvas id="equipment-plot" role="img" aria-label="Distillation column and connecting equipment"></canvas>
@@ -78,7 +86,9 @@
         <fieldset class="input-group">
           <legend>Given · Feed and mixture</legend>
           <div class="pair-control">
-            <label for="component-pair">Hydrocarbon mixture</label>
+            <div class="option-with-help" data-option-help="mixture">
+              <label for="component-pair">Hydrocarbon mixture</label>
+            </div>
             <select id="component-pair"></select>
             <p>Choose a mixture. The preset volatilities are illustrative.</p>
           </div>
@@ -86,7 +96,13 @@
           <div id="mixture-inputs" hidden>
             <table class="mixture-table">
               <caption>Feed and volatility relative to the heavy key</caption>
-              <thead><tr><th scope="col">Component</th><th scope="col">mol %</th><th scope="col">α</th></tr></thead>
+              <thead>
+                <tr>
+                  <th scope="col">Component</th>
+                  <th scope="col"><span class="option-with-help" data-option-help="feedPercent">mol %</span></th>
+                  <th scope="col"><span class="option-with-help" data-option-help="componentAlpha">α</span></th>
+                </tr>
+              </thead>
               <tbody id="mixture-rows"></tbody>
             </table>
             <p class="input-caption">The last component is the balance needed to reach 100 mol%.</p>
@@ -172,11 +188,13 @@
       <figure class="demo-panel pinch-demo">
         <h3>Watch the stages crowd at a pinch</h3>
         <p>Fixed benzene–toluene example. Each horizontal move reaches equilibrium. Each vertical move applies the column balance.</p>
-        <label for="pinch-mode" class="sr-only">Pinch example reflux case</label>
-        <select id="pinch-mode">
-          <option value="minimum">At minimum reflux</option>
-          <option value="higher">At 1.5 × minimum reflux</option>
-        </select>
+        <div class="pinch-options option-with-help" data-option-help="pinchMode">
+          <label for="pinch-mode" class="sr-only">Pinch example reflux case</label>
+          <select id="pinch-mode">
+            <option value="minimum">At minimum reflux</option>
+            <option value="higher">At 1.5 × minimum reflux</option>
+          </select>
+        </div>
         <canvas id="pinch-plot" role="img" aria-label="Binary equilibrium and operating lines with equilibrium steps"></canvas>
         <div class="pinch-legend" aria-label="Pinch plot legend">
           <span><i class="legend-line pinch-equilibrium"></i>Equilibrium</span>
@@ -205,8 +223,12 @@
         </div>
         <fieldset class="chart-switch">
           <legend class="sr-only">Chart axes</legend>
-          <label><input type="radio" name="axes" value="design" checked><span>Reflux &amp; stages</span></label>
-          <label><input type="radio" name="axes" value="normalized"><span>Normalized</span></label>
+          <div class="option-with-help" data-option-help="designAxes">
+            <label><input type="radio" name="axes" value="design" checked><span>Reflux &amp; stages</span></label>
+          </div>
+          <div class="option-with-help" data-option-help="normalizedAxes">
+            <label><input type="radio" name="axes" value="normalized"><span>Normalized</span></label>
+          </div>
         </fieldset>
       </div>
       <div class="gilliland-grid">
@@ -229,7 +251,12 @@
         </div>
         <div class="demo-panel sweep-panel">
           <h3>Trade reflux for stages</h3>
-          <label class="sweep-label" for="sweep-range">Operating reflux <output id="sweep-multiple" for="sweep-range">—</output></label>
+          <div class="sweep-label">
+            <span class="option-with-help" data-option-help="refluxSweep">
+              <label for="sweep-range">Operating reflux</label>
+            </span>
+            <output id="sweep-multiple" for="sweep-range">—</output>
+          </div>
           <input type="range" id="sweep-range" min="1.05" max="5" step="0.01" value="1.5">
           <div class="control-endpoints"><span>Near minimum</span><span>More reflux</span></div>
           <button class="quiet-button" id="sweep-play" type="button">Play reflux sweep</button>

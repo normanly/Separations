@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d171d">
+  <title>Distillation theory · Distillation Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span> Distillation Lab</a>
+      <nav class="page-tabs" aria-label="Lab pages">
+        <a href="index.html">Interactive Lab</a>
+        <a href="theory.html" aria-current="page">Theory</a>
+        <a href="python.html">Python walkthrough</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container study-page">
+    <header class="study-intro">
+      <h1>Distillation theory</h1>
+      <p>Follow the four-component example from the feed balance to the estimated number of stages. Each equation answers a different design question.</p>
+      <ul class="study-methods" aria-label="Shortcut design sequence">
+        <li><a href="#fenske-theory"><strong>Fenske</strong><span>Fewest stages</span></a></li>
+        <li><a href="#underwood-theory"><strong>Underwood</strong><span>Least reflux</span></a></li>
+        <li><a href="#gilliland-theory"><strong>Gilliland</strong><span>Stages at working reflux</span></a></li>
+      </ul>
+    </header>
+
+    <div class="study-layout">
+      <nav class="panel study-nav" aria-label="Theory sections">
+        <a href="#choices">Degrees of freedom</a>
+        <a href="#balance">Feed and product balance</a>
+        <a href="#fenske-theory">Fenske equation</a>
+        <a href="#underwood-theory">Underwood equations</a>
+        <a href="#gilliland-theory">Gilliland correlation</a>
+        <a href="#assumptions">Model assumptions</a>
+      </nav>
+
+      <article class="study-content">
+        <section class="panel study-section" id="choices">
+          <h2>Degrees of freedom</h2>
+          <p>Subtract the number of independent equations from the number of unknowns. The result is the number of independent values you must supply. In the course column model, the balances and equipment assumptions leave four design choices. In this example they are:</p>
+          <dl class="study-facts">
+            <div><dt>Light-key recovery</dt><dd>Send 95% of the n-hexane in the feed to the distillate.</dd></div>
+            <div><dt>Heavy-key recovery</dt><dd>Send 96% of the n-heptane in the feed to the bottoms.</dd></div>
+            <div><dt>Operating reflux</dt><dd>Return 1.50 times the minimum reflux ratio.</dd></div>
+            <div><dt>Feed tray position</dt><dd>Place the feed near the middle of the estimated trays.</dd></div>
+          </dl>
+          <p>Feed composition and quality define the problem. In a four-component feed, three mole fractions are independent because the fourth follows from the requirement that they sum to one. Changing the feed creates a new case with the same four design choices.</p>
+          <p><a href="index.html#dof-calculation">See the course count by equipment and constraint</a></p>
+        </section>
+
+        <section class="panel study-section" id="balance">
+          <h2>Split the feed by component</h2>
+          <p>Start with 100 mol, with 25 mol of each hydrocarbon. A key recovery is the fraction of that component in the feed that reaches its specified product. For example, 25 × 0.95 = 23.75 mol of n-hexane goes to the distillate. The remaining 1.25 mol goes to the bottoms.</p>
+          <table class="study-table">
+            <caption>Component balance on a 100 mol feed basis</caption>
+            <thead><tr><th scope="col">Component</th><th scope="col">Feed (mol)</th><th scope="col">Distillate (mol)</th><th scope="col">Bottoms (mol)</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">n-Pentane</th><td>25.00</td><td>25.00</td><td>0.00</td></tr>
+              <tr><th scope="row">n-Hexane <small>Light key</small></th><td>25.00</td><td>23.75</td><td>1.25</td></tr>
+              <tr><th scope="row">n-Heptane <small>Heavy key</small></th><td>25.00</td><td>1.00</td><td>24.00</td></tr>
+              <tr><th scope="row">n-Octane</th><td>25.00</td><td>0.00</td><td>25.00</td></tr>
+            </tbody>
+            <tfoot><tr><th scope="row">Total</th><td>100.00</td><td>49.75</td><td>50.25</td></tr></tfoot>
+          </table>
+          <p>To get a product mole fraction, divide the component moles by the total moles in that product. The distillate is 23.75 ÷ 49.75 = 47.74 mol% n-hexane. Its n-hexane recovery is 23.75 ÷ 25 = 95%.</p>
+        </section>
+
+        <section class="panel study-section" id="fenske-theory">
+          <h2>Fenske gives the fewest stages</h2>
+          <p>At total reflux, the condenser returns all liquid to the column. No product leaves. In one ideal contact, the vapor’s light-to-heavy key ratio is the liquid’s ratio multiplied by the relative volatility of the two keys.</p>
+          <p class="equation">(y<sub>LK</sub>/y<sub>HK</sub>) = (α<sub>LK</sub>/α<sub>HK</sub>) × (x<sub>LK</sub>/x<sub>HK</sub>)</p>
+          <p>With total reflux, the balance passes that enrichment from stage to stage. If each stage multiplies the ratio by 2, then <var>N</var> stages multiply it by 2<sup>N</sup>. Here, the distillate key ratio is 23.75 ÷ 1.00 and the bottoms key ratio is 1.25 ÷ 24.00. The required enrichment is 456-fold.</p>
+          <p class="equation">2<sup>Nₘᵢₙ</sup> = 456 → N<sub>min</sub> = ln(456) / ln(2) = 8.83 stages</p>
+          <p>Fenske supplies the lower stage limit for the specified products and the assumed constant relative volatilities. <a href="index.html#fenske">Watch the stages enrich the light key</a></p>
+        </section>
+
+        <section class="panel study-section" id="underwood-theory">
+          <h2>Underwood gives the least reflux</h2>
+          <p>Near minimum reflux, the vapor and liquid compositions change very little from one stage to the next. At the pinch, those steps tend to zero. The mathematical limit requires infinitely many stages to achieve the separation.</p>
+          <p>The feed quality <var>q</var> is the liquid fraction of the feed in this lab. The example is half liquid, so <var>q</var> = 0.50. The remaining half enters as vapor, which is why the feed equation uses 1 − <var>q</var>.</p>
+          <p class="equation">Σ [α<sub>i</sub> z<sub>i</sub> / (α<sub>i</sub> − θ)] = 1 − q</p>
+          <p>Here <var>z</var><sub>i</sub> is the feed mole fraction of component <var>i</var>. Solve for θ in the interval between the heavy- and light-key volatilities, 1 &lt; θ &lt; 2. The left side increases throughout that interval, so you can repeatedly halve the interval to find its one crossing. The example gives θ ≈ 1.39309.</p>
+          <p>The same θ enters the equation for the overhead stream. The condenser balance is <var>V</var> = <var>L</var> + <var>D</var>, where <var>V</var> is overhead vapor, <var>L</var> is returned liquid and <var>D</var> is distillate. Divide by <var>D</var> to get <var>V</var>/<var>D</var> = <var>R</var> + 1. Use the distillate mole fractions <var>x</var><sub>D,i</sub> in the sum:</p>
+          <p class="equation">R<sub>min</sub> + 1 = Σ [α<sub>i</sub> x<sub>D,i</sub> / (α<sub>i</sub> − θ)] ≈ 2.65698 → R<sub>min</sub> ≈ 1.65698</p>
+          <p><a href="index.html#underwood">Compare the pinch with a higher-reflux case</a></p>
+        </section>
+
+        <section class="panel study-section" id="gilliland-theory">
+          <h2>Gilliland estimates stages at working reflux</h2>
+          <p>Choose a finite reflux above the minimum. In this example, <var>R</var> = 1.50 × <var>R</var><sub>min</sub> ≈ 2.48547. The correlation uses scaled distances from the two limits:</p>
+          <p class="equation">X = (R − R<sub>min</sub>) / (R + 1)<br>Y = (N − N<sub>min</sub>) / (N + 1)</p>
+          <p>As reflux approaches the minimum, X approaches 0 and the required stages rise toward infinity, so Y approaches 1. As reflux tends to infinity, X approaches 1 and <var>N</var> approaches <var>N</var><sub>min</sub>, so Y approaches 0. The curve between these limits is an empirical fit.</p>
+          <p class="equation">X ≈ 0.23770 → Y ≈ 0.42910 → N = (N<sub>min</sub> + Y) / (1 − Y) ≈ 16.22</p>
+          <p>Round up to 17 equilibrium stages. This includes one reboiler, so the tray column has 16 ideal trays. <a href="index.html#gilliland">Trace the trade-off on the interactive chart</a></p>
+        </section>
+
+        <section class="panel study-section" id="assumptions">
+          <h2>Model assumptions</h2>
+          <p>The shortcut uses constant relative volatility, constant molar overflow, a total condenser, and an equilibrium reboiler. Components more volatile than the light key go entirely to the distillate. Components less volatile than the heavy key go entirely to the bottoms. The sample volatilities are illustrative, and real equipment design requires additional thermodynamic and hydraulic checks.</p>
+          <a class="primary-button" href="python.html">Work the example in Python <span aria-hidden="true">→</span></a>
+        </section>
+      </article>
+    </div>
+    <footer>Distillation Design Lab · Four-component course example</footer>
+  </main>
+</body>
+</html>

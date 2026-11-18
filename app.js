@@ -24,12 +24,30 @@ const parameters = [
   { key: 'feed', label: 'Light-key fraction in the feed', symbol: 'z<sub>F</sub>', min: 0.01, max: 0.99, step: 0.01, initial: 0.50 },
   { key: 'lightRecovery', label: 'Light-key recovery to distillate', symbol: 'r<sub>LK,D</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.95 },
   { key: 'heavyRecovery', label: 'Heavy-key recovery to bottoms', symbol: 'r<sub>HK,B</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.96 },
-  { key: 'quality', label: 'Feed liquid fraction', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['All vapor', 'All liquid'] },
+  { key: 'quality', label: 'Feed quality', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['All vapor', 'All liquid'] },
   { key: 'multiple', label: 'Operating reflux multiplier', symbol: 'R/R<sub>min</sub>', min: 1.05, max: 5, step: 0.01, initial: 1.50, ends: ['1.05 × minimum', '5.00 × minimum'] },
   { key: 'feedPosition', label: 'Feed tray position', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'] },
 ];
 
 const designKeys = ['lightRecovery', 'heavyRecovery', 'multiple', 'feedPosition'];
+
+const optionHelp = {
+  equipmentMode: ['Column operating case', 'Working design uses the reflux you chose. Total reflux returns all condensate and withdraws no product. At minimum reflux, the calculation reaches the limiting pinch that would take infinitely many stages.'],
+  mixture: ['Hydrocarbon mixture', 'Choose a two-, three-, or four-component feed. The preset labels the light and heavy keys, the two components used to set the separation target. The volatility values are illustrative and can be edited.'],
+  feedPercent: ['Feed mole percent', 'The share of all feed moles belonging to each component. On a 100 mol feed basis, 25 mol% means 25 mol. The last row fills in the amount needed to bring the total to 100%.'],
+  componentAlpha: ['Component relative volatility (α)', 'How readily each component vaporizes compared with the heavy key. The heavy key is the reference at 1.00. Keep the values in descending order, with the most volatile component first.'],
+  alpha: ['Relative volatility (α)', 'How readily the light key enters the vapor compared with the heavy key. At α = 2, an ideal contact doubles the light-to-heavy ratio in the vapor relative to the liquid. Larger values mean an easier separation.'],
+  feed: ['Light-key feed fraction', 'The fraction of feed moles that are light key. A value of 0.50 means 50 mol of light key per 100 mol of feed. The rest is heavy key in a two-component mixture.'],
+  lightRecovery: ['Light-key recovery to distillate', 'The share of the incoming light key sent to the top product. At 0.95, 95% of the light key goes overhead and 5% goes to the bottoms. Product purity instead uses the total moles in the product as its basis.'],
+  heavyRecovery: ['Heavy-key recovery to bottoms', 'The share of the incoming heavy key sent to the bottom product. At 0.96, 96% of the heavy key goes to the bottoms and 4% goes overhead. Product purity instead uses the total moles in the product as its basis.'],
+  quality: ['Feed quality (q)', 'In this lab, q is the fraction of the incoming feed that is liquid. q = 0 means saturated vapor, q = 0.50 means half liquid by moles, and q = 1 means saturated liquid. Underwood uses q to account for vapor entering with the feed.'],
+  multiple: ['Operating reflux multiplier (R/Rₘᵢₙ)', 'R is the liquid returned to the column divided by the distillate flow. A multiplier of 1.50 sets R to 1.5 times Underwood’s minimum. More reflux reduces the required stages and increases internal circulation.'],
+  feedPosition: ['Feed tray position (f)', 'Where the feed enters. 0 is the top tray, 0.50 is near the middle, and 1 is the bottom tray. This splits the estimated trays above and below the feed.'],
+  pinchMode: ['Pinch example reflux case', 'At minimum reflux, the tray steps crowd together where the equilibrium and operating lines meet. At 1.5 times minimum reflux, a gap opens and the steps reach the feed in a finite number of contacts. This plot uses a fixed two-component example.'],
+  designAxes: ['Reflux and stages axes', 'Shows the actual reflux ratio R horizontally and the estimated number of stages N vertically. Use this view to read your operating point directly.'],
+  normalizedAxes: ['Normalized axes', 'Shows the same operating point on 0-to-1 scales. X measures departure from minimum reflux and Y measures departure from minimum stages. This is the form used in the Gilliland correlation.'],
+  refluxSweep: ['Operating reflux slider', 'This controls the same reflux multiplier as the design input above. Moving it shows the trade-off on the Gilliland curve and updates the stage estimate.'],
+};
 
 const colors = {
   teal: '#74e1c4',
@@ -86,7 +104,9 @@ function createControl(parameter) {
   control.className = 'control';
   control.innerHTML = `
     <div class="control-title">
-      <label for="${key}-value">${label} <span class="symbol" aria-hidden="true">${symbol}</span></label>
+      <div class="option-with-help" data-option-help="${key}">
+        <label for="${key}-value">${label} <span class="symbol" aria-hidden="true">${symbol}</span></label>
+      </div>
       <input class="value" type="number" inputmode="decimal" id="${key}-value"
         min="${min}" max="${max}" step="${step}" value="${fixed(initial)}" required>
     </div>
@@ -114,6 +134,29 @@ function createControl(parameter) {
 }
 
 const controls = parameters.map(createControl);
+
+for (const option of document.querySelectorAll('[data-option-help]')) {
+  const key = option.dataset.optionHelp;
+  const [title, description] = optionHelp[key];
+  const help = document.createElement('span');
+  help.id = `option-help-${key}`;
+  help.className = 'option-help';
+  help.setAttribute('popover', 'auto');
+  const heading = document.createElement('strong');
+  heading.textContent = title;
+  const body = document.createElement('span');
+  body.textContent = description;
+  help.append(heading, body);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'help-trigger';
+  button.textContent = '?';
+  button.setAttribute('aria-label', `About ${title}`);
+  button.setAttribute('popovertarget', help.id);
+  option.append(button, help);
+}
+
 const pairSelect = $('component-pair');
 const presets = [...mixtures, ...componentPairs];
 presets.forEach((preset, index) => {

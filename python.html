@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d171d">
+  <title>Python walkthrough · Distillation Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span> Distillation Lab</a>
+      <nav class="page-tabs" aria-label="Lab pages">
+        <a href="index.html">Interactive Lab</a>
+        <a href="theory.html">Theory</a>
+        <a href="python.html" aria-current="page">Python walkthrough</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container study-page">
+    <header class="study-intro">
+      <h1>Python step by step</h1>
+      <p>Reproduce the lab’s four-component example in a Python script or notebook. Run the blocks from top to bottom, or download the complete script. It uses only Python’s standard library.</p>
+      <div class="study-actions">
+        <a class="primary-button" href="distillation_example.py" download>Download Python script <span aria-hidden="true">↓</span></a>
+        <code class="run-command">python3 distillation_example.py</code>
+      </div>
+    </header>
+
+    <div class="study-layout">
+      <nav class="panel study-nav" aria-label="Python steps">
+        <a href="#feed">Feed and design choices</a>
+        <a href="#balance">Component balance</a>
+        <a href="#fenske">Fenske minimum stages</a>
+        <a href="#underwood">Underwood minimum reflux</a>
+        <a href="#gilliland">Gilliland stage estimate</a>
+        <a href="#results">Check the output</a>
+      </nav>
+
+      <article class="study-content">
+        <section class="panel study-section" id="feed">
+          <h2>1. Set the feed and design choices</h2>
+          <p>Enter mole fractions as decimals that add to one. Set the feed quality and four independent design choices from the lab. Python lists start at index zero, so n-hexane and n-heptane have indices 1 and 2.</p>
+          <pre tabindex="0" aria-label="Python code for step 1"><code class="python-step">from math import ceil, exp, floor, isclose, log, sqrt
+
+feed_moles = 100.0
+names = [&quot;n-Pentane&quot;, &quot;n-Hexane&quot;, &quot;n-Heptane&quot;, &quot;n-Octane&quot;]
+z = [0.25, 0.25, 0.25, 0.25]       # Feed mole fractions
+alpha = [2.50, 2.00, 1.00, 0.70]  # Relative to the heavy key
+light, heavy = 1, 2                # Python indices start at zero
+q = 0.50                          # Liquid fraction of the feed
+light_recovery = 0.95              # Sent to the distillate
+heavy_recovery = 0.96              # Sent to the bottoms
+reflux_multiplier = 1.50
+feed_position = 0.50               # Top = 0, bottom = 1
+
+if not isclose(sum(z), 1.0) or any(fraction &lt;= 0 for fraction in z):
+    raise ValueError(&quot;Use positive feed mole fractions that sum to one.&quot;)
+if not all(a &gt; b &gt; 0 for a, b in zip(alpha, alpha[1:])):
+    raise ValueError(&quot;List the components in descending positive volatility.&quot;)
+if not 0 &lt;= q &lt;= 1 or not 0 &lt;= feed_position &lt;= 1:
+    raise ValueError(&quot;Feed quality and feed position must be between zero and one.&quot;)
+if not (0.5 &lt; light_recovery &lt; 1 and 0.5 &lt; heavy_recovery &lt; 1):
+    raise ValueError(&quot;Choose key recoveries greater than 0.5 and below one.&quot;)
+if reflux_multiplier &lt;= 1:
+    raise ValueError(&quot;Choose operating reflux above the minimum.&quot;)
+
+# Course count after specifying the section tray pressures and heat duties.
+components = len(z)
+dof = (components + 13) - (components + 2) - 1 - 2 - 3 - 1</code></pre>
+        </section>
+
+        <section class="panel study-section" id="balance">
+          <h2>2. Apply the component material balance</h2>
+          <p>Multiply each feed amount by its fraction sent to the distillate. The leftovers form the bottoms. Divide each product’s component amounts by its total to get its mole fractions.</p>
+          <pre tabindex="0" aria-label="Python code for step 2"><code class="python-step"># The example assumes the lighter nonkey goes overhead and the heavier
+# nonkey goes to the bottoms.
+fraction_to_distillate = [1.0, light_recovery, 1.0 - heavy_recovery, 0.0]
+feed_i = [feed_moles * fraction for fraction in z]
+distillate_i = [
+    moles * recovery for moles, recovery in zip(feed_i, fraction_to_distillate)
+]
+bottoms_i = [f - d for f, d in zip(feed_i, distillate_i)]
+distillate = sum(distillate_i)
+bottoms = sum(bottoms_i)
+x_d = [moles / distillate for moles in distillate_i]
+x_b = [moles / bottoms for moles in bottoms_i]</code></pre>
+        </section>
+
+        <section class="panel study-section" id="fenske">
+          <h2>3. Calculate Fenske&#x27;s minimum stage count</h2>
+          <p>Divide the top key ratio by the bottom key ratio. One ideal contact multiplies the ratio by the key volatility ratio. Taking natural logs gives the number of contacts needed at total reflux.</p>
+          <pre tabindex="0" aria-label="Python code for step 3"><code class="python-step">top_ratio = x_d[light] / x_d[heavy]
+bottom_ratio = x_b[light] / x_b[heavy]
+key_volatility = alpha[light] / alpha[heavy]
+n_min = log(top_ratio / bottom_ratio) / log(key_volatility)</code></pre>
+        </section>
+
+        <section class="panel study-section" id="underwood">
+          <h2>4. Solve the Underwood equations</h2>
+          <p>Find θ by bisection. If the sum at the midpoint is below 1 − q, move the lower bound up. Otherwise move the upper bound down. Evaluate the second sum at the resulting θ and subtract one.</p>
+          <pre tabindex="0" aria-label="Python code for step 4"><code class="python-step">def underwood_sum(composition, theta):
+    return sum(a * x / (a - theta) for a, x in zip(alpha, composition))
+
+
+# The feed sum increases between these two adjacent volatilities.
+lower, upper = alpha[heavy], alpha[light]
+for _ in range(50):
+    midpoint = (lower + upper) / 2
+    if underwood_sum(z, midpoint) &lt; 1 - q:
+        lower = midpoint
+    else:
+        upper = midpoint
+
+theta = (lower + upper) / 2
+r_min = underwood_sum(x_d, theta) - 1
+if r_min &lt;= 1e-12:
+    raise ValueError(&quot;This example needs a positive Underwood minimum reflux.&quot;)</code></pre>
+        </section>
+
+        <section class="panel study-section" id="gilliland">
+          <h2>5. Estimate stages at working reflux</h2>
+          <p>Set the operating reflux, calculate X, and use the exponential fit to find Y. Rearrange for the stage estimate. Round up, reserve one stage for the reboiler, and place the feed using the remaining trays.</p>
+          <pre tabindex="0" aria-label="Python code for step 5"><code class="python-step">r = reflux_multiplier * r_min
+x = (r - r_min) / (r + 1)
+exponent = (1 + 54.4 * x) / (11 + 117.2 * x) * (x - 1) / sqrt(x)
+one_minus_y = exp(exponent)
+if not one_minus_y:
+    raise ValueError(&quot;Increase reflux to move away from the pinch.&quot;)
+y = 1 - one_minus_y
+stages = (n_min + 1) / one_minus_y - 1
+
+# Round up and reserve one stage for the reboiler.
+whole_stages = max(2, ceil(stages))
+trays = whole_stages - 1
+trays_above_feed = floor(feed_position * (trays - 1) + 0.5)
+feed_tray = trays_above_feed + 1</code></pre>
+        </section>
+
+        <section class="panel study-section" id="results">
+          <h2>6. Report the results</h2>
+          <p>When all the blocks run in order, the results below match the default four-component case in the Interactive Lab.</p>
+          <pre tabindex="0" aria-label="Python code for step 6"><code class="python-step">print(f&quot;Independent design choices: {dof}&quot;)
+print(f&quot;{names[light]} recovery to distillate: {light_recovery:.0%}&quot;)
+print(f&quot;{names[light]} in distillate: {x_d[light]:.2%}&quot;)
+print(f&quot;Distillate: {distillate:.2f} mol, bottoms: {bottoms:.2f} mol&quot;)
+print(f&quot;Fenske minimum stages: {n_min:.2f}&quot;)
+print(f&quot;Underwood root: {theta:.5f}&quot;)
+print(f&quot;Underwood minimum reflux: {r_min:.5f}&quot;)
+print(f&quot;Operating reflux: {r:.5f}&quot;)
+print(f&quot;Gilliland X: {x:.5f}, Y: {y:.5f}&quot;)
+print(f&quot;Estimated stages: {stages:.2f}&quot;)
+print(f&quot;Whole stages: {whole_stages} ({trays} trays + 1 reboiler)&quot;)
+print(f&quot;Feed tray from the top: {feed_tray}&quot;)</code></pre>
+          <h3>Expected output</h3>
+          <pre tabindex="0" aria-label="Expected output"><samp id="python-output">Independent design choices: 4
+n-Hexane recovery to distillate: 95%
+n-Hexane in distillate: 47.74%
+Distillate: 49.75 mol, bottoms: 50.25 mol
+Fenske minimum stages: 8.83
+Underwood root: 1.39309
+Underwood minimum reflux: 1.65698
+Operating reflux: 2.48547
+Gilliland X: 0.23770, Y: 0.42910
+Estimated stages: 16.22
+Whole stages: 17 (16 trays + 1 reboiler)
+Feed tray from the top: 9</samp></pre>
+          <div class="study-actions"><a class="text-link" href="index.html#setup">Compare with the Interactive Lab →</a></div>
+        </section>
+      </article>
+    </div>
+    <footer>Distillation Design Lab · Four-component course example</footer>
+  </main>
+</body>
+</html>
