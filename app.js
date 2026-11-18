@@ -21,23 +21,23 @@ const mixtures = [
 
 const parameters = [
   { key: 'alpha', label: 'Relative volatility', symbol: 'α', min: 1.15, max: 6, step: 0.01, initial: componentPairs[0].alpha },
-  { key: 'feed', label: 'Feed composition', symbol: 'z<sub>F</sub>', min: 0.01, max: 0.99, step: 0.01, initial: 0.50 },
+  { key: 'feed', label: 'Light-key fraction in the feed', symbol: 'z<sub>F</sub>', min: 0.01, max: 0.99, step: 0.01, initial: 0.50 },
   { key: 'lightRecovery', label: 'Light-key recovery to distillate', symbol: 'r<sub>LK,D</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.95 },
   { key: 'heavyRecovery', label: 'Heavy-key recovery to bottoms', symbol: 'r<sub>HK,B</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.96 },
-  { key: 'quality', label: 'Feed quality', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['Vapor', 'Liquid'] },
-  { key: 'multiple', label: 'Operating reflux multiplier', symbol: 'R/R<sub>min</sub>', min: 1.05, max: 5, step: 0.01, initial: 1.50 },
+  { key: 'quality', label: 'Feed liquid fraction', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['All vapor', 'All liquid'] },
+  { key: 'multiple', label: 'Operating reflux multiplier', symbol: 'R/R<sub>min</sub>', min: 1.05, max: 5, step: 0.01, initial: 1.50, ends: ['1.05 × minimum', '5.00 × minimum'] },
   { key: 'feedPosition', label: 'Feed tray position', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'] },
 ];
 
 const designKeys = ['lightRecovery', 'heavyRecovery', 'multiple', 'feedPosition'];
 
 const colors = {
-  teal: '#6be5ce',
-  violet: '#c1a7fa',
+  teal: '#74e1c4',
+  violet: '#c4b2fa',
   amber: '#f4c477',
-  grid: '#293641',
-  label: '#a5b3c1',
-  background: '#11181f',
+  grid: '#2b424c',
+  label: '#b0c4c8',
+  background: '#0f1e25',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -127,7 +127,7 @@ const productStreams = [
 ].map((product) => {
   const stream = document.createElement('section');
   stream.className = 'product-stream';
-  stream.innerHTML = `<h3>${product.title}</h3>
+  stream.innerHTML = `<h3>${product.title}<span class="stream-rate"></span></h3>
     <div class="composition-bar" aria-hidden="true"></div><dl></dl>`;
   $('product-streams').append(stream);
   return { ...product, stream };
@@ -135,6 +135,7 @@ const productStreams = [
 
 let currentResult;
 let componentInputs = [];
+let flowRoutes = [];
 
 function setControlValue(key, value) {
   $(`${key}-range`).value = String(value);
@@ -160,10 +161,12 @@ function loadPreset() {
   } else {
     componentInputs = preset.components.map(([name, feed, alpha], index) => {
       const role = index === preset.keys[0] ? 'Light key' : index === preset.keys[1] ? 'Heavy key' : 'Nonkey';
+      const balance = index === preset.components.length - 1;
       const row = document.createElement('tr');
       row.innerHTML = `<th scope="row">${name}<small>${role}</small></th>
         <td><input class="value feed-moles" aria-label="${name} feed mol percent" type="number"
-          min="0.1" max="99.9" step="0.1" value="${feed}" required></td>
+          min="0.1" max="99.9" step="0.1" value="${feed}" ${balance ? 'readonly' : 'required'}>
+          ${balance ? '<small>Balance</small>' : ''}</td>
         <td><input class="value volatility" aria-label="${name} relative volatility" type="number"
           min="0.05" max="20" step="0.01" value="${fixed(alpha)}" ${role === 'Heavy key' ? 'readonly' : ''} required></td>`;
       $('mixture-rows').append(row);
@@ -171,6 +174,15 @@ function loadPreset() {
     });
   }
   updateUnitCounts(preset.components?.length || 2);
+}
+
+function updateFeedBalance() {
+  if (!componentInputs.length) return;
+  const entered = componentInputs.slice(0, -1);
+  const balance = componentInputs.at(-1).feed;
+  const remainingTenths = 1000 - entered.reduce((sum, { feed }) => sum + Math.round(10 * feed.valueAsNumber), 0);
+  balance.value = entered.every(({ feed }) => feed.validity.valid) ? (remainingTenths / 10).toFixed(1) : '';
+  balance.setAttribute('aria-invalid', String(remainingTenths <= 0));
 }
 
 function resolveStreams(values) {
@@ -184,11 +196,11 @@ function resolveStreams(values) {
   const alpha = multicomponent
     ? componentInputs.map(({ alpha: input }) => input.valueAsNumber)
     : [values.alpha, 1];
-  if (componentInputs.some((row) => !row.feed.validity.valid || !row.alpha.validity.valid)) {
+  if (componentInputs.some(({ feed, alpha }) => (!feed.readOnly && !feed.validity.valid) || !alpha.validity.valid)) {
     return { error: 'Enter valid feed percentages and relative volatilities for each component.' };
   }
-  if (Math.abs(feed.reduce((sum, fraction) => sum + fraction, 0) - 1) > 1e-8) {
-    return { error: 'Set the feed mole percentages to total 100%.' };
+  if (feed.some((fraction) => !Number.isFinite(fraction) || fraction <= 0)) {
+    return { error: 'Leave at least 0.1 mol% for the balance component.' };
   }
   if (alpha.some((value, index) => index > 0 && alpha[index - 1] <= value)) {
     return { error: 'Set relative volatilities in descending order from top to bottom.' };
@@ -210,8 +222,19 @@ function updateProductStreams(result) {
   const preset = presets[pairSelect.selectedIndex];
   const names = result?.names || preset.components?.map(([name]) => name) || [preset.light, preset.heavy];
   const keys = result?.keys || preset.keys || [0, 1];
+  const light = keys[0];
+  const rate = result?.distillateRate;
+  if (result) {
+    const inlet = result.feed[light];
+    const overhead = rate * result.distillate[light];
+    $('product-example').textContent = `${fixed(100 * inlet)} mol ${names[light]} × ${(100 * overhead / inlet).toFixed(0)}% recovery = ${fixed(100 * overhead)} mol overhead. Divide by ${fixed(100 * rate)} mol of distillate to get ${fixed(100 * result.distillate[light])} mol%.`;
+  } else {
+    $('product-example').textContent = 'Set the feed composition and both key recoveries to calculate the split.';
+  }
   const formatPercent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 2 });
   for (const { key, keyIndex, stream } of productStreams) {
+    const amount = key === 'distillate' ? rate : 1 - rate;
+    stream.querySelector('.stream-rate').textContent = result ? `${fixed(100 * amount)} mol` : '—';
     const bar = stream.querySelector('.composition-bar');
     const list = stream.querySelector('dl');
     bar.replaceChildren();
@@ -256,6 +279,7 @@ function readInputs() {
 }
 
 function updateResults() {
+  updateFeedBalance();
   const { values, error, limitsReady } = readInputs();
   updateDof();
   let message = error;
@@ -300,9 +324,13 @@ function updateResults() {
   $('operating-reflux').value = point ? formatEstimate(point.reflux) : '—';
   $('rounded-stages').value = point?.wholeStages?.toLocaleString('en-US') ?? '—';
   $('plot-message').hidden = Boolean(result?.rMin);
+  if (!result?.rMin) $('plot-message').textContent = result?.root !== undefined
+    ? 'This key-root result needs a positive minimum reflux to use the multiplier.'
+    : 'Enter the feed data and both key recoveries to calculate the limits.';
   $('operating-legend').hidden = !point;
   updateProductStreams(result);
   drawCharts();
+  document.dispatchEvent(new Event('lab:results'));
 }
 
 function prepareCanvas(canvas) {
@@ -337,98 +365,6 @@ function drawDot(ctx, x, y, radius, color) {
   ctx.stroke();
 }
 
-function drawMini(canvas, min, max, active, evaluate, color) {
-  const { ctx, width, height } = prepareCanvas(canvas);
-  if (active === undefined) {
-    canvas.setAttribute('aria-label', 'Plot unavailable for the current inputs.');
-    return;
-  }
-  const samples = Array.from({ length: 41 }, (_, i) => evaluate(min + (max - min) * i / 40));
-  const activeValue = evaluate(active);
-  const low = Math.min(...samples, activeValue);
-  const high = Math.max(...samples, activeValue);
-  const xAt = (value) => 5 + (width - 10) * (value - min) / (max - min);
-  const yAt = (value) => height - 5 - (height - 10) * (value - low) / (high - low || 1);
-  drawLine(ctx, [[5, height - 5], [width - 5, height - 5]], colors.grid);
-  drawLine(ctx, samples.map((value, i) => [5 + (width - 10) * i / 40, yAt(value)]), color, 1.5);
-  drawDot(ctx, xAt(active), yAt(activeValue), 3, color);
-}
-
-function drawPinchChart(result) {
-  $('pinch-title').textContent = 'Stages crowd at the pinch';
-  $('pinch-caption').textContent = 'At minimum reflux, the operating line meets the equilibrium curve. Each stage changes the composition by less as it approaches the pinch.';
-  $('pinch-legend').hidden = false;
-  $('pinch-message').textContent = 'A positive minimum reflux ratio is needed to plot the pinch.';
-  const canvas = $('pinch-plot');
-  const { ctx, width, height } = prepareCanvas(canvas);
-  $('pinch-message').hidden = Boolean(result?.rMin);
-  if (!result?.rMin) {
-    canvas.setAttribute('aria-label', 'Pinch plot unavailable for the current inputs.');
-    return;
-  }
-
-  const { root, rMin } = result;
-  const alpha = result.alpha[0];
-  const distillate = result.distillate[0];
-  const equilibrium = (x) => alpha * x / (1 + (alpha - 1) * x);
-  const liquidAtEquilibrium = (y) => y / (alpha - (alpha - 1) * y);
-  const operating = (x) => (rMin * x + distillate) / (rMin + 1);
-  // For the binary Underwood root, the feed pinch vapor fraction is (α − θ) / (α − 1).
-  const pinchVapor = (alpha - root) / (alpha - 1);
-  const pinchLiquid = liquidAtEquilibrium(pinchVapor);
-  const firstLiquid = liquidAtEquilibrium(distillate);
-  const xSpan = firstLiquid - pinchLiquid;
-  const ySpan = distillate - pinchVapor;
-  const xMin = Math.max(0, pinchLiquid - 0.13 * xSpan);
-  const xMax = Math.min(1, firstLiquid + 0.17 * xSpan);
-  const yMin = Math.max(0, pinchVapor - 0.24 * ySpan);
-  const yMax = Math.min(1, distillate + 0.13 * ySpan);
-  const left = 21;
-  const right = width - 13;
-  const top = 8;
-  const bottom = height - 17;
-  const xAt = (x) => left + (right - left) * (x - xMin) / (xMax - xMin);
-  const yAt = (y) => bottom - (bottom - top) * (y - yMin) / (yMax - yMin);
-  const plotPoint = (x, y) => [xAt(x), yAt(y)];
-
-  for (let division = 0; division <= 4; division++) {
-    const px = left + (right - left) * division / 4;
-    const py = top + (bottom - top) * division / 4;
-    drawLine(ctx, [[px, top], [px, bottom]], colors.grid);
-    drawLine(ctx, [[left, py], [right, py]], colors.grid);
-  }
-
-  const equilibriumCurve = Array.from({ length: 41 }, (_, i) => {
-    const x = xMin + (xMax - xMin) * i / 40;
-    return plotPoint(x, equilibrium(x));
-  });
-  const stairs = [plotPoint(firstLiquid, distillate)];
-  let liquid = firstLiquid;
-  for (let stage = 0; stage < 120 && liquid - pinchLiquid > 0.002 * xSpan; stage++) {
-    const vapor = operating(liquid);
-    stairs.push(plotPoint(liquid, vapor));
-    liquid = liquidAtEquilibrium(vapor);
-    stairs.push(plotPoint(liquid, vapor));
-  }
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(left, top, right - left, bottom - top);
-  ctx.clip();
-  drawLine(ctx, equilibriumCurve, colors.violet, 1.6);
-  drawLine(ctx, [plotPoint(xMin, operating(xMin)), plotPoint(xMax, operating(xMax))], colors.label, 1, [4, 3]);
-  drawLine(ctx, stairs, colors.amber, 1.2);
-  ctx.restore();
-
-  drawDot(ctx, xAt(pinchLiquid), yAt(pinchVapor), 3, colors.violet);
-  ctx.fillStyle = colors.label;
-  ctx.font = '10px monospace';
-  ctx.fillText('y', 8, top + 5);
-  ctx.fillText('x', right - 6, height - 4);
-  ctx.fillText('Pinch', xAt(pinchLiquid) + 7, yAt(pinchVapor) + 13);
-  canvas.setAttribute('aria-label', `At minimum reflux the equilibrium curve and operating line meet at liquid fraction x = ${fixed(pinchLiquid)} and vapor fraction y = ${fixed(pinchVapor)}. The stage steps shrink toward the pinch.`);
-}
-
 function tickStep(maximum, count) {
   const target = maximum / count;
   const magnitude = 10 ** Math.floor(Math.log10(target));
@@ -453,10 +389,13 @@ function drawMainChart(normalized) {
 
   const { rMin, nMin, point } = currentResult;
   const xDivisions = width < 420 ? 4 : 5;
-  const xStep = normalized ? 1 / xDivisions : tickStep(Math.max(4 * rMin, 1.15 * (point?.reflux ?? 0), rMin + 0.6), xDivisions);
+  const xStep = normalized ? 1 / xDivisions : tickStep(Math.max(5.2 * rMin, rMin + 0.6), xDivisions);
   const xCount = xDivisions;
   const yCount = normalized ? 4 : 5;
-  const yStep = normalized ? 0.25 : tickStep(Math.max(2.75 * nMin + 3, 1.3 * (point?.stages ?? 0)), yCount);
+  const nearMinimumX = 0.05 * rMin / (1.05 * rMin + 1);
+  const nearMinimumStages = estimateStages(nMin, gillilandExponent(nearMinimumX));
+  const chartHeight = Math.max(2.75 * nMin + 3, 1.12 * (point?.stages ?? 0), Math.min(nearMinimumStages, 4 * nMin + 20));
+  const yStep = normalized ? 0.25 : tickStep(chartHeight, yCount);
   const xMax = xStep * xCount;
   const yMax = yStep * yCount;
   const left = width < 420 ? 47 : 57;
@@ -550,15 +489,10 @@ function drawMainChart(normalized) {
 }
 
 function drawUnderwoodRoot(result) {
-  const canvas = $('pinch-plot');
+  const canvas = $('root-plot');
+  if (!canvas.clientWidth) return;
   const { ctx, width, height } = prepareCanvas(canvas);
-  $('pinch-title').textContent = 'Find the root between the keys';
-  $('pinch-caption').textContent = 'The key-bracket root from the feed equation determines minimum reflux. At that reflux, a composition pinch requires infinitely many equilibrium stages.';
-  $('pinch-legend').hidden = true;
-  const rootAvailable = result?.root !== undefined;
-  $('pinch-message').hidden = rootAvailable;
-  $('pinch-message').textContent = 'Enter valid feed data, feed quality, and key recoveries to show the Underwood result.';
-  if (!rootAvailable) {
+  if (result?.root === undefined) {
     canvas.setAttribute('aria-label', 'Underwood root plot unavailable for the current inputs.');
     return;
   }
@@ -569,7 +503,7 @@ function drawUnderwoodRoot(result) {
   const right = width - 22;
   const middle = height / 2;
   const xAt = (theta) => left + (right - left) * (theta - low) / (high - low);
-  const yAt = (residual) => middle - 13 * Math.max(-2.7, Math.min(2.7, residual));
+  const yAt = (residual) => middle - 13 * residual;
   drawLine(ctx, [[left, middle], [right, middle]], colors.label, 1, [4, 3]);
   drawLine(ctx, [[left, 9], [left, height - 14]], colors.grid);
   drawLine(ctx, [[right, 9], [right, height - 14]], colors.grid);
@@ -577,7 +511,12 @@ function drawUnderwoodRoot(result) {
     const theta = low + (high - low) * (0.001 + 0.998 * index / 100);
     return [xAt(theta), yAt(underwoodSum(alpha, feed, theta) - (1 - quality))];
   });
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, 9, right - left, height - 23);
+  ctx.clip();
   drawLine(ctx, trace, colors.violet, 1.6);
+  ctx.restore();
   drawDot(ctx, xAt(root), middle, 4, colors.amber);
   ctx.fillStyle = colors.label;
   ctx.font = '10px monospace';
@@ -585,7 +524,7 @@ function drawUnderwoodRoot(result) {
   ctx.textAlign = 'right';
   ctx.fillText('αLK', right, height - 3);
   ctx.textAlign = 'center';
-  ctx.fillText('θ', xAt(root), middle + 16);
+  ctx.fillText(`θ = ${root.toFixed(3)}`, Math.max(left + 25, Math.min(right - 25, xAt(root))), middle + 16);
   canvas.setAttribute('aria-label', `Underwood feed equation residual versus theta. The zero crossing is at theta ${root.toFixed(3)}, between heavy-key alpha ${fixed(low)} and light-key alpha ${fixed(high)}.`);
 }
 
@@ -596,6 +535,7 @@ function drawEquipment() {
   const mode = $('equipment-mode').value;
   const total = mode === 'total';
   const minimum = mode === 'minimum';
+  flowRoutes = [];
   const reflux = minimum ? result?.rMin : result?.point?.reflux;
   const stages = total ? result?.nMin : minimum && result?.rMin ? Infinity : result?.point?.stages;
   const rate = result?.distillateRate * 100;
@@ -634,7 +574,8 @@ function drawEquipment() {
     ctx.fillText(label, x, y);
   };
   const pipe = (points, color, arrow = false) => {
-    drawLine(ctx, points, color, 1.6);
+    drawLine(ctx, points, color, 1.8);
+    if (color !== quiet && (total || reflux)) flowRoutes.push({ points, color });
     if (!arrow) return;
     const [[beforeX, beforeY], [x, y]] = points.slice(-2);
     const angle = Math.atan2(y - beforeY, x - beforeX);
@@ -668,6 +609,10 @@ function drawEquipment() {
     drawLine(ctx, [[column - towerHalf + 7 + (tray % 2) * 7, y],
       [column + towerHalf - 7 - ((tray + 1) % 2) * 7, y]], trays && tray === feedMark ? product : wall, trays && tray === feedMark ? 2 : 1);
   }
+  if (total || reflux) {
+    pipe([[column - 8, 207], [column - 8, 91]], vapor, true);
+    pipe([[column + 8, 91], [column + 8, 207]], liquid, true);
+  }
   vessel(condenser - 14, 35, 28, 28, 14);
   vessel(drum - 25, 77, 50, 27, 13);
   vessel(boiler - 14, 224, 28, 28, 14);
@@ -680,8 +625,8 @@ function drawEquipment() {
   text(`Distillate ${distillate}`, exit, 114, outletColor, 'right');
   text(`Feed ${feed}`, entry, feedY - 9, muted);
   text(`Reflux ${returned}`, (column + towerHalf + drum) / 2, 122, liquid, 'center');
-  text('Rectifying', column + towerHalf + 9, 154);
-  text('Stripping', column + towerHalf + 9, 195);
+  if (feedMark >= 2) text('Above feed', column + towerHalf + 18, Math.min(154, feedY - 8));
+  if (feedMark < 6) text('Below feed', column + towerHalf + 9, Math.max(171, feedY + 16));
   text('Reboiler', boiler + 19, 242);
   text(`Bottoms ${bottoms}`, exit, 287, outletColor, 'right');
   text('Tray column', column, 286, muted, 'center');
@@ -690,9 +635,9 @@ function drawEquipment() {
   const caption = total
     ? 'The drum returns all condensate to the column. Feed, distillate, and bottoms are zero at steady total reflux.'
     : minimum
-      ? (result?.rMin ? 'The drum returns the minimum reflux. The pinch requires infinitely many theoretical stages to reach the specified split.' : 'Set valid column inputs with a positive minimum reflux to show the pinch case.')
+      ? (result?.rMin ? 'A pinch stalls the separation at this reflux. The stream amounts show the limiting product split.' : 'Set valid column inputs with a positive minimum reflux to show the pinch case.')
       : reflux
-        ? 'Vapor rises to the condenser. The drum splits condensate into reflux and distillate. The reboiler sends boilup back to the stripping section.'
+        ? 'The reboiler sends vapor up the column. The condenser turns it into liquid, and the drum splits that liquid into reflux and distillate.'
         : 'Enter valid recovery and reflux specifications to calculate the operating stream flows.';
   $('equipment-caption').textContent = caption;
   canvas.setAttribute('aria-label', `Tray column with rectifying and stripping sections, condenser, reflux drum and reboiler. Feed ${feed}, distillate ${distillate}, bottoms ${bottoms}, reflux ${returned}. ${caption}`);
@@ -726,24 +671,7 @@ function drawCharts() {
   const point = normalized ? result?.point : undefined;
   $('normalized-point').hidden = !point;
   $('normalized-point').textContent = point ? `(${fixed(point.x)}, ${fixed(point.y)})` : '';
-  const fenskePlot = $('fenske-plot');
-  const underwoodPlot = $('underwood-plot');
-  const light = result?.keys[0];
-  const alpha = result?.alpha[light];
-  drawMini(fenskePlot, Math.min(1.15, alpha ?? 1.15), Math.max(6, alpha ?? 0), alpha, (value) => {
-    const trial = result.alpha.with(light, value);
-    return minimumStages(trial, result.distillate, result.bottoms, result.keys);
-  }, colors.teal);
-  drawMini(underwoodPlot, 0, 1, result?.rMin ? result.quality : undefined,
-    (value) => underwood(result.alpha, result.feed, result.distillate, value, result.keys).minimum, colors.violet);
-  if (result) {
-    fenskePlot.setAttribute('aria-label', `Minimum stage count falls as light-key relative volatility increases. At α = ${fixed(alpha)}, N min = ${formatEstimate(result.nMin)}.`);
-  }
-  if (result?.rMin) {
-    underwoodPlot.setAttribute('aria-label', `Underwood estimate as feed quality varies. At q = ${fixed(result.quality)}, R min = ${formatEstimate(result.rMin)}.`);
-  }
-  if (componentInputs.length) drawUnderwoodRoot(result);
-  else drawPinchChart(result);
+  drawUnderwoodRoot(result);
   drawMainChart(normalized);
   drawEquipment();
 }
@@ -769,5 +697,6 @@ $('open-notes').addEventListener('click', () => $('model-notes').showModal());
 new ResizeObserver(drawCharts).observe($('main-plot'));
 $('equipment-mode').addEventListener('change', drawEquipment);
 new ResizeObserver(drawEquipment).observe($('equipment-plot'));
+new ResizeObserver(() => drawUnderwoodRoot(currentResult)).observe($('root-plot'));
 loadPreset();
 updateResults();
