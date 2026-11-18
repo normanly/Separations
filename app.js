@@ -24,7 +24,7 @@ const parameters = [
   { key: 'feed', label: 'Light-key fraction in the feed', symbol: 'z<sub>F</sub>', min: 0.01, max: 0.99, step: 0.01, initial: 0.50 },
   { key: 'lightRecovery', label: 'Light-key recovery to distillate', symbol: 'r<sub>LK,D</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.95 },
   { key: 'heavyRecovery', label: 'Heavy-key recovery to bottoms', symbol: 'r<sub>HK,B</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.96 },
-  { key: 'quality', label: 'Feed quality', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['All vapor', 'All liquid'] },
+  { key: 'quality', label: 'Feed liquid fraction', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['All vapor', 'All liquid'] },
   { key: 'multiple', label: 'Operating reflux multiplier', symbol: 'R/R<sub>min</sub>', min: 1.05, max: 5, step: 0.01, initial: 1.50, ends: ['1.05 × minimum', '5.00 × minimum'] },
   { key: 'feedPosition', label: 'Feed tray position', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'] },
 ];
@@ -40,7 +40,7 @@ const optionHelp = {
   feed: ['Light-key feed fraction', 'The fraction of feed moles that are light key. A value of 0.50 means 50 mol of light key per 100 mol of feed. The rest is heavy key in a two-component mixture.'],
   lightRecovery: ['Light-key recovery to distillate', 'The share of the incoming light key sent to the top product. At 0.95, 95% of the light key goes overhead and 5% goes to the bottoms. Product purity instead uses the total moles in the product as its basis.'],
   heavyRecovery: ['Heavy-key recovery to bottoms', 'The share of the incoming heavy key sent to the bottom product. At 0.96, 96% of the heavy key goes to the bottoms and 4% goes overhead. Product purity instead uses the total moles in the product as its basis.'],
-  quality: ['Feed quality (q)', 'In this lab, q is the fraction of the incoming feed that is liquid. q = 0 means saturated vapor, q = 0.50 means half liquid by moles, and q = 1 means saturated liquid. Underwood uses q to account for vapor entering with the feed.'],
+  quality: ['Feed quality (q)', 'q is the feed quality. In this lab it measures the liquid share of the incoming feed by moles. q = 0 means saturated vapor, q = 0.50 means half liquid, and q = 1 means saturated liquid. Underwood uses q to account for vapor entering with the feed.'],
   multiple: ['Operating reflux multiplier (R/Rₘᵢₙ)', 'R is the liquid returned to the column divided by the distillate flow. A multiplier of 1.50 sets R to 1.5 times Underwood’s minimum. More reflux reduces the required stages and increases internal circulation.'],
   feedPosition: ['Feed tray position (f)', 'Where the feed enters. 0 is the top tray, 0.50 is near the middle, and 1 is the bottom tray. This splits the estimated trays above and below the feed.'],
   pinchMode: ['Pinch example reflux case', 'At minimum reflux, the tray steps crowd together where the equilibrium and operating lines meet. At 1.5 times minimum reflux, a gap opens and the steps reach the feed in a finite number of contacts. This plot uses a fixed two-component example.'],
