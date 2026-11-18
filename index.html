@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101419">
+  <title>Distillation Design Lab</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="./" aria-label="Distillation Lab home"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span> Distillation Lab</a>
+      <button class="quiet-button" id="open-notes" type="button"><span aria-hidden="true">ⓘ</span> Model notes</button>
+    </div>
+  </header>
+  <main class="container">
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">SEPARATIONS / SHORTCUT DISTILLATION</p>
+      <h1 id="page-title">Distillation Design Lab</h1>
+      <p>Explore how separation targets and reflux shape a shortcut distillation column.</p>
+    </section>
+
+    <section class="panel dof" aria-labelledby="dof-title">
+      <div class="section-top connection-heading">
+        <div><h2 id="dof-title">Degrees of freedom</h2>
+          <p class="connection-caption">The course model starts with five degrees of freedom after the feed and equipment basis are fixed. Specifying saturated condenser liquid leaves four choices for the design.</p></div>
+        <div class="setup-actions">
+          <p class="dof-readout"><output id="dof-remaining" aria-live="polite">4</output> of 4 design inputs remaining</p>
+          <button class="quiet-button reset" type="reset" form="column-form"><span aria-hidden="true">↻</span> Reset</button>
+        </div>
+      </div>
+      <form id="column-form" class="dof-grid">
+        <fieldset class="input-group">
+          <legend>Given feed and model data</legend>
+          <div class="pair-control">
+            <label for="component-pair">Hydrocarbon mixture</label>
+            <select id="component-pair"></select>
+            <p>Presets load example relative volatilities.</p>
+          </div>
+          <p class="input-caption" id="binary-caption">Enter the light-key mole fraction in the feed.</p>
+          <div id="mixture-inputs" hidden>
+            <table class="mixture-table">
+              <caption>Feed and volatility relative to the heavy key</caption>
+              <thead><tr><th scope="col">Component</th><th scope="col">mol %</th><th scope="col">α</th></tr></thead>
+              <tbody id="mixture-rows"></tbody>
+            </table>
+            <p class="input-caption">Feed fractions must total 100%.</p>
+          </div>
+          <div id="basis-controls" class="column-controls"></div>
+        </fieldset>
+        <fieldset class="input-group">
+          <legend>Four independent design specifications</legend>
+          <p class="input-caption">Set the two key recoveries to calculate the product split. Set the reflux multiplier to select an operating point. Set the feed tray position from 0 (top) to 1 (bottom) to allocate the trays.</p>
+          <div id="design-controls" class="column-controls"></div>
+        </fieldset>
+      </form>
+      <p class="input-error" id="input-error" role="status" hidden></p>
+      <p class="dof-jump"><a href="#dof-calculation">See the worked DOF calculation and how the inlet can change</a></p>
+    </section>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Calculated product compositions">
+        <section class="panel products" aria-labelledby="products-title">
+          <h2 id="products-title">Product compositions</h2>
+          <p class="product-caption">Mole percent from the feed and specified key recoveries.</p>
+          <div class="product-streams" id="product-streams"></div>
+        </section>
+      </aside>
+
+      <div class="results">
+        <div class="limits">
+          <section class="panel limit fenske" aria-labelledby="fenske-title">
+            <div class="section-top">
+              <h2 id="fenske-title"><span class="dot"></span>Fenske</h2>
+              <span class="condition">TOTAL REFLUX</span>
+            </div>
+            <div class="limit-data">
+              <div>
+                <p class="metric"><output id="min-stages" for="lightRecovery-value heavyRecovery-value">—</output><span> stages</span></p>
+                <p class="metric-label">Minimum stages, N<sub>min</sub></p>
+              </div>
+              <div class="mini-plot">
+                <canvas id="fenske-plot" role="img" aria-label="Minimum stage count falls as relative volatility increases"></canvas>
+                <span>N<sub>min</sub> vs. α</span>
+              </div>
+            </div>
+            <div class="equation">N<sub>min</sub> = ln[(x<sub>D,LK</sub> / x<sub>D,HK</sub>) / (x<sub>B,LK</sub> / x<sub>B,HK</sub>)] / ln(α<sub>LK</sub> / α<sub>HK</sub>)</div>
+            <figure class="limit-visual">
+              <h3>All condensate goes back</h3>
+              <div class="reflux-flow" role="img" aria-label="The condenser returns 100 percent of the liquid to the column and sends 0 percent to distillate.">
+                <div class="flow-source">Condenser outlet</div>
+                <div class="flow-split">
+                  <div class="flow-branch flow-return"><strong>100%</strong><span>Return to column</span></div>
+                  <div class="flow-branch flow-product"><strong>0%</strong><span>Distillate product</span></div>
+                </div>
+              </div>
+              <figcaption>At total reflux, there is no feed or product withdrawal at steady state. The minimum stage count describes this zero-throughput limit.</figcaption>
+            </figure>
+          </section>
+
+          <section class="panel limit underwood" aria-labelledby="underwood-title">
+            <div class="section-top">
+              <h2 id="underwood-title"><span class="dot"></span>Underwood</h2>
+              <span class="condition">INFINITE STAGES</span>
+            </div>
+            <div class="limit-data">
+              <div>
+                <p class="metric"><output id="min-reflux" for="lightRecovery-value heavyRecovery-value quality-value">—</output></p>
+                <p class="metric-label">Minimum reflux ratio, R<sub>min</sub></p>
+              </div>
+              <div class="mini-plot">
+                <canvas id="underwood-plot" role="img" aria-label="Minimum reflux ratio as feed quality varies"></canvas>
+                <span>R<sub>min</sub> vs. q</span>
+              </div>
+            </div>
+            <div class="equation">R<sub>min</sub> = Σ α<sub>i</sub>x<sub>D,i</sub> / (α<sub>i</sub> − θ) − 1 <span class="root" id="root-value"></span></div>
+            <figure class="limit-visual">
+              <h3 id="pinch-title">Stages crowd at the pinch</h3>
+              <div class="pinch-visual">
+                <canvas id="pinch-plot" role="img" aria-label="Composition steps shrink toward the minimum-reflux pinch."></canvas>
+                <p id="pinch-message" hidden>A positive minimum reflux ratio is needed to plot the pinch.</p>
+                <div id="pinch-legend" class="pinch-legend" aria-label="Pinch plot legend">
+                  <span><i class="legend-line pinch-equilibrium"></i>Equilibrium</span>
+                  <span><i class="legend-line pinch-operating"></i>Operating line</span>
+                  <span><i class="legend-line gilliland-line"></i>Stages</span>
+                </div>
+              </div>
+              <figcaption id="pinch-caption">At minimum reflux, the operating line meets the equilibrium curve. Each stage changes the composition by less as it approaches the pinch, so reaching the separation target takes infinitely many stages.</figcaption>
+            </figure>
+          </section>
+        </div>
+
+        <section class="panel connection" aria-labelledby="gilliland-title">
+          <div class="section-top connection-heading">
+            <div>
+              <p class="connection-label">
+                <span class="fenske-color">N<sub>min</sub></span><span>&amp;</span>
+                <span class="underwood-color">R<sub>min</sub></span><span aria-hidden="true">→</span>
+                <span class="gilliland-color">N at selected R</span>
+              </p>
+              <h2 id="gilliland-title">Gilliland correlation</h2>
+              <p class="connection-caption">More reflux reduces the number of theoretical stages required.</p>
+            </div>
+            <fieldset class="chart-switch">
+              <legend class="sr-only">Chart axes</legend>
+              <label><input type="radio" name="axes" value="design" checked><span>Design</span></label>
+              <label><input type="radio" name="axes" value="normalized"><span>Normalized</span></label>
+            </fieldset>
+          </div>
+
+          <div class="operating-point" aria-live="polite" aria-atomic="true">
+            <div class="active-stage"><span class="dot"></span><output id="operating-stages" for="multiple-value">—</output> <span>theoretical stages</span></div>
+            <div class="reflux-readout"><span>Reflux ratio</span><output id="operating-reflux" for="multiple-value">—</output></div>
+            <div class="stage-readout"><span>Whole stages</span><output id="rounded-stages" for="multiple-value">—</output></div>
+          </div>
+
+          <div class="plot-area">
+            <canvas id="main-plot" role="img" aria-label="Gilliland curve"></canvas>
+            <p class="plot-message" id="plot-message" hidden>Adjust the column inputs to plot the correlation.</p>
+          </div>
+          <div class="legend" aria-label="Chart legend">
+            <span><i class="legend-line gilliland-line"></i>Gilliland curve</span>
+            <span id="operating-legend"><i class="legend-dot"></i>Operating point <span id="normalized-point" hidden></span></span>
+            <span><i class="legend-line fenske-line"></i><span id="stage-legend">Fenske limit</span></span>
+            <span><i class="legend-line underwood-line"></i><span id="reflux-legend">Underwood limit</span></span>
+          </div>
+        </section>
+        <section class="panel equipment" aria-labelledby="equipment-title">
+          <div class="section-top connection-heading">
+            <div>
+              <h2 id="equipment-title">Column and stream flows</h2>
+              <p class="connection-caption">Flow basis: 100 mol of feed for cases with product withdrawal.</p>
+            </div>
+            <label class="equipment-mode"><span class="sr-only">Column operating case</span><select id="equipment-mode">
+              <option value="design">Finite reflux</option>
+              <option value="total">Total reflux · Fenske</option>
+              <option value="minimum">Minimum reflux · Underwood</option>
+            </select></label>
+          </div>
+          <canvas id="equipment-plot" role="img" aria-label="Distillation column and connecting equipment"></canvas>
+          <p id="equipment-caption" class="connection-caption"></p>
+          <p id="tray-allocation" class="tray-allocation" hidden></p>
+        </section>
+      </div>
+    </div>
+    <section class="panel dof-proof" id="dof-calculation" aria-labelledby="dof-proof-title">
+      <h2 id="dof-proof-title">Worked degrees-of-freedom calculation</h2>
+      <p>Degrees of freedom equal unknowns minus independent equations. This count uses the course column with a rectifying section, a stripping section, one feed tray, a condenser, a reflux drum that splits liquid, and an equilibrium reboiler.</p>
+      <h3>Assemble the column</h3>
+      <p>Let <var>C</var> be the number of components (currently <strong id="dof-components">4</strong>), and let <var>T</var> be the number of rectifying and stripping trays combined, excluding the feed tray and reboiler. The standalone counts use the course convention.</p>
+      <dl id="unit-counts"></dl>
+      <p>Each section with <var>n</var> trays contributes 2<var>n</var> + 2<var>C</var> + 5 after its internal connections are counted. Add both sections, the feed tray, condenser, reboiler, and reflux splitter:</p>
+      <p class="equation">[2T + 4C + 10] + [3C + 8] + 2[C + 4] + [C + 5] = 2T + 10C + 31</p>
+      <p>Count the nine streams shared between those units once. Each shared stream has <var>C</var> + 2 independent variables: total flow, <var>C</var> − 1 mole fractions, temperature, and pressure.</p>
+      <p class="equation">2T + 10C + 31 − 9(C + 2) = 2T + C + 13</p>
+
+      <h3>Apply the specifications</h3>
+      <table class="proof-table">
+        <thead><tr><th scope="col">Specification</th><th scope="col">Uses</th><th scope="col">DOF left</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Pressure and heat duty for each section tray</th><td>2T</td><td><span id="dof-after-trays">17</span></td></tr>
+          <tr><th scope="row">Inlet flow basis, composition, and thermal state</th><td id="dof-feed-used">6</td><td>11</td></tr>
+          <tr><th scope="row">Adiabatic reflux splitter</th><td>1</td><td>10</td></tr>
+          <tr><th scope="row">Pressure and heat duty at the feed tray</th><td>2</td><td>8</td></tr>
+          <tr><th scope="row">Condenser, reboiler, and reflux splitter pressures</th><td>3</td><td>5</td></tr>
+          <tr><th scope="row">Saturated liquid from the total condenser</th><td>1</td><td><strong>4</strong></td></tr>
+        </tbody>
+      </table>
+      <p>The four remaining choices are the light- and heavy-key recoveries, the operating reflux multiplier, and the feed tray position. Once you provide all four, the running count at the top reads zero. For comparison, the course simulation case specifies the two section tray counts, distillate flow, and operating reflux ratio.</p>
+
+      <h3>Why the inlet is editable</h3>
+      <p>The inlet uses <var>C</var> + 2 specifications: one flow basis, <var>C</var> − 1 independent mole fractions, and two thermal-state properties (temperature and pressure in the course count). Each run fixes these values. Editing them defines a new feed case with the same number of independent design choices. The lab fixes the flow basis at 100 mol and represents the inlet phase condition through feed quality <var>q</var> at the assumed pressure.</p>
+      <ul>
+        <li><strong>Composition.</strong> With four components, three feed mole fractions are independent. The fourth equals 100% minus their sum. Keep the total at 100% when changing the feed. At fixed recoveries, a different feed composition changes the product flows and compositions and can change minimum reflux.</li>
+        <li><strong>Feed quality.</strong> Changing <var>q</var> changes the right-hand side 1 − <var>q</var> of Underwood’s feed equation. It can therefore change the minimum reflux and the operating stage estimate. With key recoveries and relative volatilities held fixed, Fenske’s minimum stages stay the same.</li>
+      </ul>
+      <a href="#column-form">Back to the inlet and design inputs</a>
+    </section>
+    <footer>Constant relative volatility · Equilibrium stages · Fenske and Underwood four-component example and column DOF convention from the course notes</footer>
+  </main>
+
+  <dialog id="model-notes" aria-labelledby="notes-title">
+    <div class="notes-header">
+      <h2 id="notes-title">Model notes</h2>
+      <form method="dialog"><button class="quiet-button" type="submit" aria-label="Close model notes">✕</button></form>
+    </div>
+    <p>This shortcut model uses constant relative volatility α for the light key (α<sub>LK</sub> = α, α<sub>HK</sub> = 1), constant molar overflow, a total condenser, and an equilibrium reboiler. Gilliland’s stage count includes the equilibrium reboiler. For tray allocation, the lab rounds up and allows at least one feed tray plus the reboiler. The specified fraction of inter-tray positions above the feed sets its location by rounding to the nearest tray. Hydrocarbon mixtures load illustrative relative volatilities. Use a value appropriate to the mixture, temperature, and pressure for engineering calculations.</p>
+    <h3>Equilibrium and feed state</h3>
+    <p>With constant relative volatilities, y<sub>i</sub> = α<sub>i</sub>x<sub>i</sub> / Σ α<sub>j</sub>x<sub>j</sub>. For an ideal mixture at a given temperature, Raoult’s law relates α to the ratio of saturation pressures, which can be estimated from Antoine’s equation. For a partially vaporized feed, q = 1 − β, where β is the vapor fraction from a flash calculation.</p>
+    <h3>Fenske at total reflux</h3>
+    <p>The ratio of light to heavy key in the distillate divided by that ratio in the bottoms determines N<sub>min</sub>.</p>
+    <h3>Underwood at minimum reflux</h3>
+    <p>Find θ between 1 and α from Σ α<sub>i</sub>z<sub>i</sub> / (α<sub>i</sub> − θ) = 1 − q. Then evaluate R<sub>min</sub> + 1 = Σ α<sub>i</sub>x<sub>D,i</sub> / (α<sub>i</sub> − θ). Here q is the liquid fraction of the feed in the selected range, from saturated vapor (0) to saturated liquid (1). The reflux multiplier requires a positive R<sub>min</sub>.</p>
+    <h3>Gilliland at finite reflux</h3>
+    <p>Set X = (R − R<sub>min</sub>) / (R + 1) and Y = (N − N<sub>min</sub>) / (N + 1). The exponential fit to the Gilliland correlation gives Y from X.</p>
+    <p class="equation notes-equation">Y = 1 − exp[((1 + 54.4X) / (11 + 117.2X)) · ((X − 1) / √X)]</p>
+    <p>Recover N = (N<sub>min</sub> + Y) / (1 − Y). The design curve approaches the minimum stage count as reflux increases and rises sharply as reflux approaches R<sub>min</sub>. The normalized view shows both endpoints directly.</p>
+  </dialog>
+</body>
+</html>
