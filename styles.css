@@ -108,13 +108,23 @@ select { max-width: 100%; background: var(--inset); color: var(--text); border: 
   width: 24px;
   height: 24px;
   padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.help-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
   border: 1px solid #9de6d4;
   border-radius: 50%;
   background: #83dcc6;
   color: #102923;
-  font: 750 14px/1 var(--mono);
+  font: 750 11px/1 var(--mono);
 }
-.help-trigger:hover, .option-with-help:has(.option-help:popover-open) .help-trigger { background: #b8f4e4; }
+.help-trigger:hover .help-icon,
+.option-with-help:has(.option-help:popover-open) .help-icon { background: #b8f4e4; }
 .option-help {
   display: none;
   width: min(300px, calc(100vw - 24px));

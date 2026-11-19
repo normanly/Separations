@@ -151,7 +151,11 @@ for (const option of document.querySelectorAll('[data-option-help]')) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'help-trigger';
-  button.textContent = '?';
+  const icon = document.createElement('span');
+  icon.className = 'help-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = '?';
+  button.append(icon);
   button.setAttribute('aria-label', `About ${title}`);
   button.setAttribute('popovertarget', help.id);
   option.append(button, help);
@@ -216,7 +220,10 @@ function loadPreset() {
       return { name, feed: row.querySelector('.feed-moles'), alpha: row.querySelector('.volatility') };
     });
   }
-  updateUnitCounts(preset.components?.length || 2);
+  const componentCount = preset.components?.length ?? 2;
+  for (const link of document.querySelectorAll('[data-dof-link]')) {
+    link.search = componentCount === 4 ? '' : '?components=' + componentCount;
+  }
 }
 
 function updateFeedBalance() {
@@ -690,20 +697,6 @@ function updateDof() {
   const remaining = controls.filter(({ key, number }) =>
     designKeys.includes(key) && !number.validity.valid).length;
   $('dof-remaining').value = String(remaining);
-}
-
-function updateUnitCounts(components) {
-  $('dof-components').textContent = components;
-  $('dof-after-trays').textContent = components + 13;
-  $('dof-feed-used').textContent = components + 2;
-  const units = [
-    ['Equilibrium tray', '2C + 6', 2 * components + 6],
-    ['Feed tray', '3C + 8', 3 * components + 8],
-    ['Condenser and reboiler, each', 'C + 4', components + 4],
-    ['Reflux splitter', 'C + 5', components + 5],
-  ];
-  $('unit-counts').innerHTML = units.map(([name, formula, count]) =>
-    `<div><dt>${name}</dt><dd>${formula} = ${count}</dd></div>`).join('');
 }
 
 function drawCharts() {

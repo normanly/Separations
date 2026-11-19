@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=inline-help">
-  <script src="app.js?v=inline-help" defer></script>
-  <script src="lessons.js" defer></script>
+  <link rel="stylesheet" href="styles.css?v=theory-dof">
+  <script src="app.js?v=theory-dof" defer></script>
+  <script src="lessons.js?v=theory-dof" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -23,7 +23,7 @@
   </header>
   <main class="container">
     <nav class="nav-links" aria-label="Lesson sections">
-      <a href="#setup">Design inputs</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#gilliland">Gilliland</a><a href="#dof-calculation">DOF proof</a>
+      <a href="#setup">Design inputs</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#gilliland">Gilliland</a><a href="theory.html#dof-calculation" data-dof-link>DOF proof</a>
     </nav>
     <section class="intro" aria-labelledby="page-title">
       <div class="hero-copy">
@@ -118,7 +118,7 @@
       <p class="input-error" id="input-error" role="status" hidden></p>
       <div class="setup-footer">
         <p>Clear a design value to see one choice reopen. Changing the feed defines a new case with the same four choices.</p>
-        <a href="#dof-calculation">Work through the count ↓</a>
+        <a href="theory.html#dof-calculation" data-dof-link>Work through the count in Theory</a>
       </div>
     </section>
 
@@ -270,45 +270,6 @@
           </details>
         </div>
       </div>
-    </section>
-    <section class="panel dof-proof" id="dof-calculation" aria-labelledby="dof-proof-title">
-      <h2 id="dof-proof-title">Worked degrees-of-freedom calculation</h2>
-      <p>Degrees of freedom equal unknowns minus independent equations. This count uses the course column with a rectifying section, a stripping section, one feed tray, a condenser, a reflux drum that splits liquid, and an equilibrium reboiler.</p>
-      <h3>Assemble the column</h3>
-      <p>Let <var>C</var> be the number of components (currently <strong id="dof-components">4</strong>), and let <var>T</var> be the number of rectifying and stripping trays combined, excluding the feed tray and reboiler. The standalone counts use the course convention.</p>
-      <dl id="unit-counts"></dl>
-      <p>Start with <var>n</var> equilibrium trays. Each neighboring pair shares a vapor and a liquid stream. Subtract those repeated variables and add one choice for the section tray count.</p>
-      <p class="equation">n(2C + 6) − 2(n − 1)(C + 2) + 1 = 2n + 2C + 5</p>
-      <p>Add both sections, the feed tray, condenser, reboiler, and reflux splitter.</p>
-      <p class="equation">[2T + 4C + 10] + [3C + 8] + 2[C + 4] + [C + 5] = 2T + 10C + 31</p>
-      <p>Count the nine streams shared between those units once. Three are the overhead vapor, condensate, and reflux. The other six are the paired liquid and vapor links on either side of the feed tray and at the reboiler. Each shared stream has <var>C</var> + 2 independent variables: total flow, <var>C</var> − 1 mole fractions, temperature, and pressure.</p>
-      <p class="equation">2T + 10C + 31 − 9(C + 2) = 2T + C + 13</p>
-
-      <div class="section-top proof-heading">
-        <h3>Apply the specifications</h3>
-        <button class="quiet-button" id="proof-next" type="button">Step through the count</button>
-      </div>
-      <div class="proof-readout" id="proof-current" role="status">Start with 2T + C + 13 remaining choices.</div>
-      <table class="proof-table">
-        <thead><tr><th scope="col">Specification</th><th scope="col">Uses</th><th scope="col">DOF left</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Pressure and heat duty for each section tray</th><td>2T</td><td><span id="dof-after-trays">17</span></td></tr>
-          <tr><th scope="row">Inlet flow basis, composition, and thermal state</th><td id="dof-feed-used">6</td><td>11</td></tr>
-          <tr><th scope="row">Adiabatic reflux splitter</th><td>1</td><td>10</td></tr>
-          <tr><th scope="row">Pressure and heat duty at the feed tray</th><td>2</td><td>8</td></tr>
-          <tr><th scope="row">Condenser, reboiler, and reflux splitter pressures</th><td>3</td><td>5</td></tr>
-          <tr><th scope="row">Saturated liquid from the total condenser</th><td>1</td><td><strong>4</strong></td></tr>
-        </tbody>
-      </table>
-      <p>The four remaining choices are the light- and heavy-key recoveries, the operating reflux multiplier, and the feed tray position. Once you provide all four, the running count at the top reads zero. For comparison, the course simulation case specifies the two section tray counts, distillate flow, and operating reflux ratio.</p>
-
-      <h3>Why the inlet is editable</h3>
-      <p>The inlet uses <var>C</var> + 2 specifications: one flow basis, <var>C</var> − 1 independent mole fractions, and two thermal-state properties (temperature and pressure in the course count). Each run fixes these values. Editing them defines a new feed case with the same number of independent design choices. The lab fixes the flow basis at 100 mol and represents inlet state through feed quality <var>q</var>. A real feed temperature and pressure would be used in a flash calculation to obtain that quality.</p>
-      <ul>
-        <li><strong>Composition.</strong> With four components, three feed mole fractions are independent. The fourth equals 100% minus their sum. The lab fills in the final fraction to keep the total at 100%. At fixed recoveries, a different feed composition changes the product flows and compositions and can change minimum reflux.</li>
-        <li><strong>Feed quality.</strong> Changing <var>q</var> changes the right-hand side 1 − <var>q</var> of Underwood’s feed equation. It can therefore change the minimum reflux and the operating stage estimate. With key recoveries and relative volatilities held fixed, Fenske’s minimum stages stay the same.</li>
-      </ul>
-      <a href="#column-form">Back to the inlet and design inputs</a>
     </section>
     <footer>Course model and four-component example · Constant relative volatility · Equilibrium stages</footer>
   </main>
