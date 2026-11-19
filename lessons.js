@@ -1,38 +1,53 @@
 'use strict';
 
-function playback(button, { interval, start, advance, finish, playLabel, pauseLabel }) {
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+function playback(button, panel, { interval, advance, playLabel, pauseLabel }) {
+  let enabled = !reducedMotion.matches;
+  let visible = false;
   let timer;
-  function stop() {
-    if (timer === undefined) return;
-    clearInterval(timer);
-    timer = undefined;
-    button.textContent = playLabel;
-    finish?.();
+
+  function sync() {
+    const label = enabled && !button.disabled ? pauseLabel : playLabel;
+    if (button.textContent !== label) button.textContent = label;
+    const active = enabled && visible && !document.hidden && !button.disabled;
+    if (active && timer === undefined) {
+      timer = setInterval(advance, interval);
+    } else if (!active && timer !== undefined) {
+      clearInterval(timer);
+      timer = undefined;
+    }
+  }
+
+  function pause() {
+    enabled = false;
+    sync();
   }
 
   button.addEventListener('click', () => {
-    if (timer !== undefined) {
-      stop();
-      return;
-    }
-    start();
-    button.textContent = pauseLabel;
-    timer = setInterval(() => {
-      if (!advance()) stop();
-    }, interval);
+    enabled = !enabled;
+    sync();
   });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stop();
+  document.addEventListener('visibilitychange', sync);
+  reducedMotion.addEventListener('change', (event) => {
+    if (event.matches) pause();
   });
-  return stop;
+  new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    sync();
+  }).observe(panel);
+  sync();
+  return { pause, sync };
 }
 
 const flowCanvas = $('equipment-motion');
 const flowPlay = $('flow-play');
 let flowSurface;
-let flowPlaying = false;
+let flowPlaying = !reducedMotion.matches;
 let flowVisible = false;
 let flowFrame;
+let flowTime = 0;
+let lastFlowFrame;
 
 function clearFlow() {
   if (flowSurface) {
@@ -42,6 +57,8 @@ function clearFlow() {
 }
 
 function animateFlows(time) {
+  flowTime += lastFlowFrame === undefined ? 0 : time - lastFlowFrame;
+  lastFlowFrame = time;
   const { ctx } = flowSurface;
   clearFlow();
   for (const { points, color } of flowRoutes) {
@@ -54,7 +71,7 @@ function animateFlows(time) {
     // Particle movement teaches flow direction. Read the pipe labels for material amounts.
     const count = Math.max(1, Math.round(length / 46));
     for (let index = 0; index < count; index++) {
-      let distance = (time * 0.052 + index * length / count) % length;
+      let distance = (flowTime * 0.052 + index * length / count) % length;
       for (const segment of segments) {
         if (distance < segment.length) {
           const fraction = distance / segment.length;
@@ -73,7 +90,8 @@ function animateFlows(time) {
 
 function syncFlowPlayback() {
   cancelAnimationFrame(flowFrame);
-  clearFlow();
+  lastFlowFrame = undefined;
+  flowPlay.textContent = flowPlaying ? 'Pause flow animation' : 'Play flow animation';
   if (flowPlaying && flowVisible && flowSurface && !document.hidden) {
     flowFrame = requestAnimationFrame(animateFlows);
   }
@@ -81,7 +99,6 @@ function syncFlowPlayback() {
 
 flowPlay.addEventListener('click', () => {
   flowPlaying = !flowPlaying;
-  flowPlay.textContent = flowPlaying ? 'Pause flow animation' : 'Play flow animation';
   syncFlowPlayback();
 });
 new ResizeObserver(() => {
@@ -93,12 +110,21 @@ new IntersectionObserver(([entry]) => {
   syncFlowPlayback();
 }).observe(flowCanvas);
 document.addEventListener('visibilitychange', syncFlowPlayback);
+reducedMotion.addEventListener('change', (event) => {
+  if (event.matches) {
+    flowPlaying = false;
+    syncFlowPlayback();
+  }
+});
+$('equipment-mode').addEventListener('change', clearFlow);
+document.addEventListener('lab:results', clearFlow);
+syncFlowPlayback();
 
 document.querySelectorAll('[data-equipment-case]').forEach((link) => {
   link.addEventListener('click', () => {
     $('equipment-mode').value = link.dataset.equipmentCase;
     drawEquipment();
-    syncFlowPlayback();
+    clearFlow();
   });
 });
 
@@ -106,6 +132,7 @@ const stagePlay = $('stage-play');
 const stageNext = $('stage-next');
 let enrichment;
 let shownStages = 0;
+let stageHold = 0;
 
 function showStage(announce = false) {
   const stageLabel = shownStages === 0
@@ -120,25 +147,27 @@ function showStage(announce = false) {
   stageNext.textContent = enrichment && shownStages >= enrichment.stages ? 'Restart stages' : 'Next stage';
 }
 
-const stopStages = playback(stagePlay, {
+const stagePlayback = playback(stagePlay, $('stage-current-bar'), {
   interval: 430,
   playLabel: 'Play enrichment',
   pauseLabel: 'Pause enrichment',
-  start() {
-    if (shownStages >= enrichment.stages) shownStages = 0;
-    showStage();
-  },
   advance() {
-    const stride = Math.max(1, Math.ceil(enrichment.stages / 18));
-    shownStages = Math.min(enrichment.stages, shownStages + stride);
+    if (shownStages >= enrichment.stages) {
+      if (++stageHold < 3) return;
+      shownStages = 0;
+      stageHold = 0;
+    } else {
+      const stride = Math.max(1, Math.ceil(enrichment.stages / 18));
+      shownStages = Math.min(enrichment.stages, shownStages + stride);
+    }
     showStage();
-    return shownStages < enrichment.stages;
   },
 });
 
 stageNext.addEventListener('click', () => {
-  stopStages();
+  stagePlayback.pause();
   shownStages = shownStages >= enrichment.stages ? 0 : Math.min(enrichment.stages, shownStages + 1);
+  stageHold = 0;
   showStage(true);
 });
 
@@ -149,11 +178,12 @@ function updateFenskeLesson(result) {
   const target = result ? result.distillate[light] / result.distillate[heavy] : undefined;
   // Reflux changes do not disturb the stage illustration for a fixed separation.
   if (enrichment && enrichment.factor === factor && enrichment.start === start && enrichment.target === target) return;
-  stopStages();
   shownStages = 0;
+  stageHold = 0;
   enrichment = result ? { factor, start, target, stages: result.nMin } : undefined;
   stagePlay.disabled = !result;
   stageNext.disabled = !result;
+  stagePlayback.sync();
   $('stage-factor').textContent = result ? formatEstimate(factor) : '—';
   $('fenske-work').textContent = result
     ? `ln(${formatEstimate(target)} ÷ ${formatEstimate(start)}) ÷ ln(${formatEstimate(factor)}) = ${formatEstimate(result.nMin)} stages`
@@ -174,6 +204,7 @@ const pinchVapor = pinchEquilibrium(pinchFeed);
 const pinchReflux = (pinchDistillate - pinchVapor) / (pinchVapor - pinchFeed);
 let pinchExample;
 let pinchSegments;
+let pinchHold = 0;
 
 function buildPinchExample() {
   const atMinimum = $('pinch-mode').value === 'minimum';
@@ -190,6 +221,7 @@ function buildPinchExample() {
   }
   pinchExample = { atMinimum, reflux, operating, steps };
   pinchSegments = steps.length - 1;
+  pinchHold = 0;
   $('pinch-caption').textContent = atMinimum
     ? `At R = ${fixed(reflux)}, the lines meet at the feed composition. The steps shrink toward that pinch.`
     : `At R = ${fixed(reflux)}, the lines separate at the feed. The steps can reach the feed region in a finite number of contacts.`;
@@ -251,22 +283,22 @@ function drawPinchLesson() {
     : 'At 1.5 times minimum reflux, the two lines are separated at the feed and the tray steps cross the feed composition.');
 }
 
-const stopPinch = playback($('pinch-play'), {
+playback($('pinch-play'), $('pinch-plot'), {
   interval: 140,
   playLabel: 'Play tray steps',
   pauseLabel: 'Pause tray steps',
-  start() {
-    if (pinchSegments >= pinchExample.steps.length - 1) pinchSegments = 0;
-    drawPinchLesson();
-  },
   advance() {
-    pinchSegments++;
+    if (pinchSegments >= pinchExample.steps.length - 1) {
+      if (++pinchHold < 8) return;
+      pinchSegments = 0;
+      pinchHold = 0;
+    } else {
+      pinchSegments++;
+    }
     drawPinchLesson();
-    return pinchSegments < pinchExample.steps.length - 1;
   },
 });
 $('pinch-mode').addEventListener('change', () => {
-  stopPinch();
   buildPinchExample();
   drawPinchLesson();
 });
@@ -275,32 +307,23 @@ new ResizeObserver(drawPinchLesson).observe($('pinch-plot'));
 
 const sweep = $('sweep-range');
 let sweepFrame = 0;
-const stopSweep = playback($('sweep-play'), {
+const sweepPlayback = playback($('sweep-play'), $('main-plot'), {
   interval: 95,
   playLabel: 'Play reflux sweep',
   pauseLabel: 'Pause reflux sweep',
-  start() {
-    sweepFrame = 0;
-    $('operating-readout').setAttribute('aria-live', 'off');
-    setControlValue('multiple', Number(sweep.min));
-    updateResults();
-  },
   advance() {
-    sweepFrame++;
-    const fraction = (sweepFrame / 41) ** 1.55;
-    const multiple = Number(sweep.min) + fraction * (Number(sweep.max) - Number(sweep.min));
-    setControlValue('multiple', Number(multiple.toFixed(2)));
-    updateResults();
-    return sweepFrame < 41;
-  },
-  finish() {
-    $('operating-readout').setAttribute('aria-live', 'polite');
+    // Hold briefly at the high-reflux end before starting another pass.
+    if (sweepFrame <= 41) {
+      const fraction = (sweepFrame / 41) ** 1.55;
+      refluxPreviewMultiplier = Number(sweep.min) + fraction * (Number(sweep.max) - Number(sweep.min));
+      drawMainChart();
+    }
+    sweepFrame = (sweepFrame + 1) % 53;
   },
 });
-$('column-form').addEventListener('input', stopSweep, true);
-$('column-form').addEventListener('reset', stopSweep);
 sweep.addEventListener('input', () => {
-  stopSweep();
+  sweepPlayback.pause();
+  refluxPreviewMultiplier = undefined;
   setControlValue('multiple', sweep.valueAsNumber);
   updateResults();
 });
@@ -315,6 +338,7 @@ function updateLessonReadouts() {
   if (hasMultiple) sweep.value = input.value;
   sweep.disabled = !ready;
   $('sweep-play').disabled = !ready;
+  sweepPlayback.sync();
   $('sweep-multiple').textContent = ready && hasMultiple ? `${fixed(input.valueAsNumber)} × minimum` : '—';
   sweep.style.setProperty('--fill', `${100 * (sweep.valueAsNumber - Number(sweep.min)) / (Number(sweep.max) - Number(sweep.min))}%`);
   if (root !== undefined) {

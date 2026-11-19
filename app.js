@@ -1,30 +1,9 @@
 'use strict';
 
-// Illustrative constant volatilities for the shortcut model.
-const componentPairs = [
-  { light: 'Benzene', heavy: 'Toluene', alpha: 2.50 },
-  { light: 'Isobutane', heavy: 'n-Butane', alpha: 1.35 },
-  { light: 'n-Pentane', heavy: 'n-Hexane', alpha: 2.65 },
-  { light: 'n-Hexane', heavy: 'n-Heptane', alpha: 2.40 },
-  { light: 'n-Heptane', heavy: 'n-Octane', alpha: 2.20 },
-  { light: 'Toluene', heavy: 'Ethylbenzene', alpha: 2.00 },
-];
-
-const mixtures = [
-  { label: 'Four-component course example', keys: [1, 2], components: [
-    ['n-Pentane', 25, 2.50], ['n-Hexane', 25, 2.00], ['n-Heptane', 25, 1], ['n-Octane', 25, 0.70],
-  ] },
-  { label: 'Three-component alkane mixture', keys: [0, 1], components: [
-    ['n-Hexane', 35, 2.10], ['n-Heptane', 40, 1], ['n-Octane', 25, 0.52],
-  ] },
-];
-
 const parameters = [
-  { key: 'alpha', label: 'Relative volatility', symbol: 'α', min: 1.15, max: 6, step: 0.01, initial: componentPairs[0].alpha },
-  { key: 'feed', label: 'Light-key fraction in the feed', symbol: 'z<sub>F</sub>', min: 0.01, max: 0.99, step: 0.01, initial: 0.50 },
   { key: 'lightRecovery', label: 'Light-key recovery to distillate', symbol: 'r<sub>LK,D</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.95 },
   { key: 'heavyRecovery', label: 'Heavy-key recovery to bottoms', symbol: 'r<sub>HK,B</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.96 },
-  { key: 'quality', label: 'Feed liquid fraction', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 1.00, ends: ['All vapor', 'All liquid'] },
+  { key: 'quality', label: 'Feed liquid fraction', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['All vapor', 'All liquid'] },
   { key: 'multiple', label: 'Operating reflux multiplier', symbol: 'R/R<sub>min</sub>', min: 1.05, max: 5, step: 0.01, initial: 1.50, ends: ['1.05 × minimum', '5.00 × minimum'] },
   { key: 'feedPosition', label: 'Feed tray position', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'] },
 ];
@@ -33,11 +12,11 @@ const designKeys = ['lightRecovery', 'heavyRecovery', 'multiple', 'feedPosition'
 
 const optionHelp = {
   equipmentMode: ['Column operating case', 'Working design uses the reflux you chose. Total reflux returns all condensate and withdraws no product. At minimum reflux, the calculation reaches the limiting pinch that would take infinitely many stages.'],
-  mixture: ['Hydrocarbon mixture', 'Choose a two-, three-, or four-component feed. The preset labels the light and heavy keys, the two components used to set the separation target. The volatility values are illustrative and can be edited.'],
+  mixture: ['Search hydrocarbons', 'Add two or more hydrocarbons by name or formula. For compounds outside the list, enter a name and relative volatility. Catalog values are rough starting estimates from boiling points.'],
+  customAlpha: ['Custom component relative volatility (α)', 'Enter the component’s volatility relative to the reference named below. A larger value means it enters the vapor more easily. The table rescales every value when you change heavy keys.'],
+  keyPair: ['Light and heavy keys', 'Choose the boundary between neighboring components in volatility order. The light key is the more volatile component. The heavy key sets the α reference at 1. The shortcut sends other components above this pair overhead and those below it to the bottoms.'],
   feedPercent: ['Feed mole percent', 'The share of all feed moles belonging to each component. On a 100 mol feed basis, 25 mol% means 25 mol. The last row fills in the amount needed to bring the total to 100%.'],
-  componentAlpha: ['Component relative volatility (α)', 'How readily each component vaporizes compared with the heavy key. The heavy key is the reference at 1.00. Keep the values in descending order, with the most volatile component first.'],
-  alpha: ['Relative volatility (α)', 'How readily the light key enters the vapor compared with the heavy key. At α = 2, an ideal contact doubles the light-to-heavy ratio in the vapor relative to the liquid. Larger values mean an easier separation.'],
-  feed: ['Light-key feed fraction', 'The fraction of feed moles that are light key. A value of 0.50 means 50 mol of light key per 100 mol of feed. The rest is heavy key in a two-component mixture.'],
+  componentAlpha: ['Component relative volatility (α)', 'How readily each component vaporizes compared with the heavy key. The heavy key is the reference at 1.00. If an edit changes the component order, use Sort by volatility. Changing the key pair rescales the values to the new heavy key.'],
   lightRecovery: ['Light-key recovery to distillate', 'The share of the incoming light key sent to the top product. At 0.95, 95% of the light key goes overhead and 5% goes to the bottoms. Product purity instead uses the total moles in the product as its basis.'],
   heavyRecovery: ['Heavy-key recovery to bottoms', 'The share of the incoming heavy key sent to the bottom product. At 0.96, 96% of the heavy key goes to the bottoms and 4% goes overhead. Product purity instead uses the total moles in the product as its basis.'],
   quality: ['Feed quality (q)', 'q is the feed quality. In this lab it measures the liquid share of the incoming feed by moles. q = 0 means saturated vapor, q = 0.50 means half liquid, and q = 1 means saturated liquid. Underwood uses q to account for vapor entering with the feed.'],
@@ -46,7 +25,7 @@ const optionHelp = {
   pinchMode: ['Pinch example reflux case', 'At minimum reflux, the tray steps crowd together where the equilibrium and operating lines meet. At 1.5 times minimum reflux, a gap opens and the steps reach the feed in a finite number of contacts. This plot uses a fixed two-component example.'],
   designAxes: ['Reflux and stages axes', 'Shows the actual reflux ratio R horizontally and the estimated number of stages N vertically. Use this view to read your operating point directly.'],
   normalizedAxes: ['Normalized axes', 'Shows the same operating point on 0-to-1 scales. X measures departure from minimum reflux and Y measures departure from minimum stages. This is the form used in the Gilliland correlation.'],
-  refluxSweep: ['Operating reflux slider', 'This controls the same reflux multiplier as the design input above. Moving it shows the trade-off on the Gilliland curve and updates the stage estimate.'],
+  refluxSweep: ['Operating reflux slider', 'This controls the same reflux multiplier as the design input above. Moving it sets your design point and updates its stage estimate. The automatic sweep uses a separate preview marker.'],
 };
 
 const colors = {
@@ -78,8 +57,9 @@ function underwood(alpha, feed, distillate, quality, [light, heavy]) {
   // The shortcut uses the root between adjacent keys, where the feed sum is strictly increasing.
   let low = alpha[heavy];
   let high = alpha[light];
-  for (let iteration = 0; iteration < 50; iteration++) {
+  for (let iteration = 0; iteration < 80; iteration++) {
     const middle = (low + high) / 2;
+    if (middle === low || middle === high) break;
     if (underwoodSum(alpha, feed, middle) < 1 - quality) low = middle;
     else high = middle;
   }
@@ -96,6 +76,14 @@ function gillilandExponent(x) {
 function estimateStages(minimum, exponent) {
   // Use 1 − Y = exp(exponent) directly to avoid rounding Y to 1 near minimum reflux.
   return (minimum + 1) / Math.exp(exponent) - 1;
+}
+
+function refluxPoint(nMin, rMin, multiplier) {
+  const reflux = multiplier * rMin;
+  const x = (multiplier - 1) * rMin / (reflux + 1);
+  const exponent = gillilandExponent(x);
+  const stages = estimateStages(nMin, exponent);
+  return Number.isFinite(stages * 10) ? { reflux, x, y: -Math.expm1(exponent), stages } : null;
 }
 
 function createControl(parameter) {
@@ -161,13 +149,7 @@ for (const option of document.querySelectorAll('[data-option-help]')) {
   option.append(button, help);
 }
 
-const pairSelect = $('component-pair');
-const presets = [...mixtures, ...componentPairs];
-presets.forEach((preset, index) => {
-  pairSelect.add(new Option(preset.label || `${preset.light} / ${preset.heavy}`, String(index), index === 0, index === 0));
-});
-
-const componentColors = [colors.teal, colors.violet, '#83bdf6', '#e5ae8b'];
+const nonkeyColors = ['#83bdf6', '#e5ae8b', '#e2cf8f', '#9ad4a2', '#eb9ec2', '#a8a6eb'];
 const productStreams = [
   { key: 'distillate', title: 'Distillate · overhead', keyIndex: 1 },
   { key: 'bottoms', title: 'Bottoms', keyIndex: 0 },
@@ -181,7 +163,7 @@ const productStreams = [
 });
 
 let currentResult;
-let componentInputs = [];
+let refluxPreviewMultiplier;
 let flowRoutes = [];
 
 function setControlValue(key, value) {
@@ -189,71 +171,25 @@ function setControlValue(key, value) {
   $(`${key}-value`).value = fixed(value);
 }
 
-function loadPreset() {
-  const preset = presets[pairSelect.selectedIndex];
-  const multicomponent = Boolean(preset.components);
-  $('binary-caption').hidden = multicomponent;
-  $('mixture-inputs').hidden = !multicomponent;
-  for (const { key, control } of controls) {
-    if (['alpha', 'feed'].includes(key)) control.hidden = multicomponent;
-  }
-  setControlValue('quality', multicomponent ? 0.5 : 1);
-  setControlValue('lightRecovery', 0.95);
-  setControlValue('heavyRecovery', multicomponent ? 0.96 : 0.95);
-  $('mixture-rows').replaceChildren();
-  componentInputs = [];
-  if (!multicomponent) {
-    $('alpha-range').value = String(preset.alpha);
-    $('alpha-value').value = fixed(preset.alpha);
-  } else {
-    componentInputs = preset.components.map(([name, feed, alpha], index) => {
-      const role = index === preset.keys[0] ? 'Light key' : index === preset.keys[1] ? 'Heavy key' : 'Nonkey';
-      const balance = index === preset.components.length - 1;
-      const row = document.createElement('tr');
-      row.innerHTML = `<th scope="row">${name}<small>${role}</small></th>
-        <td><input class="value feed-moles" aria-label="${name} feed mol percent" type="number"
-          min="0.1" max="99.9" step="0.1" value="${feed}" ${balance ? 'readonly' : 'required'}>
-          ${balance ? '<small>Balance</small>' : ''}</td>
-        <td><input class="value volatility" aria-label="${name} relative volatility" type="number"
-          min="0.05" max="20" step="0.01" value="${fixed(alpha)}" ${role === 'Heavy key' ? 'readonly' : ''} required></td>`;
-      $('mixture-rows').append(row);
-      return { name, feed: row.querySelector('.feed-moles'), alpha: row.querySelector('.volatility') };
-    });
-  }
-  const componentCount = preset.components?.length ?? 2;
-  for (const link of document.querySelectorAll('[data-dof-link]')) {
-    link.search = componentCount === 4 ? '' : '?components=' + componentCount;
-  }
-}
-
-function updateFeedBalance() {
-  if (!componentInputs.length) return;
-  const entered = componentInputs.slice(0, -1);
-  const balance = componentInputs.at(-1).feed;
-  const remainingTenths = 1000 - entered.reduce((sum, { feed }) => sum + Math.round(10 * feed.valueAsNumber), 0);
-  balance.value = entered.every(({ feed }) => feed.validity.valid) ? (remainingTenths / 10).toFixed(1) : '';
-  balance.setAttribute('aria-invalid', String(remainingTenths <= 0));
-}
-
 function resolveStreams(values) {
-  const preset = presets[pairSelect.selectedIndex];
-  const multicomponent = Boolean(preset.components);
-  const names = multicomponent ? componentInputs.map(({ name }) => name) : [preset.light, preset.heavy];
-  const keys = preset.keys || [0, 1];
-  const feed = multicomponent
-    ? componentInputs.map(({ feed: input }) => input.valueAsNumber / 100)
-    : [values.feed, 1 - values.feed];
-  const alpha = multicomponent
-    ? componentInputs.map(({ alpha: input }) => input.valueAsNumber)
-    : [values.alpha, 1];
+  const { componentInputs, keys } = feedAndKeyInputs();
+  if (componentInputs.length < 2) {
+    return { error: 'Add at least two hydrocarbons to calculate a separation.' };
+  }
+  const names = componentInputs.map(({ name }) => name);
+  const feed = componentInputs.map(({ feed: input }) => input.valueAsNumber / 100);
+  const alpha = componentInputs.map(({ alpha: input }) => input.valueAsNumber);
   if (componentInputs.some(({ feed, alpha }) => (!feed.readOnly && !feed.validity.valid) || !alpha.validity.valid)) {
     return { error: 'Enter valid feed percentages and relative volatilities for each component.' };
   }
   if (feed.some((fraction) => !Number.isFinite(fraction) || fraction <= 0)) {
     return { error: 'Leave at least 0.1 mol% for the balance component.' };
   }
-  if (alpha.some((value, index) => index > 0 && alpha[index - 1] <= value)) {
-    return { error: 'Set relative volatilities in descending order from top to bottom.' };
+  if (alpha.some((value, index) => index > 0 && alpha[index - 1] < value)) {
+    return { error: 'Your volatility edits changed the component order. Select Sort by volatility.' };
+  }
+  if (alpha.some((value, index) => index > 0 && alpha[index - 1] === value)) {
+    return { error: 'Use distinct relative volatilities so the shortcut can order the components.' };
   }
   const [light, heavy] = keys;
   const toDistillate = feed.map((fraction, index) => {
@@ -269,9 +205,9 @@ function resolveStreams(values) {
 }
 
 function updateProductStreams(result) {
-  const preset = presets[pairSelect.selectedIndex];
-  const names = result?.names || preset.components?.map(([name]) => name) || [preset.light, preset.heavy];
-  const keys = result?.keys || preset.keys || [0, 1];
+  const mixture = feedAndKeyInputs();
+  const names = result?.names ?? mixture.componentInputs.map(({ name }) => name);
+  const keys = names.length > 1 ? mixture.keys : [];
   const light = keys[0];
   const rate = result?.distillateRate;
   if (result) {
@@ -289,10 +225,12 @@ function updateProductStreams(result) {
     const list = stream.querySelector('dl');
     bar.replaceChildren();
     list.replaceChildren();
+    let nonkeyIndex = 0;
     for (const [index, name] of names.entries()) {
       const fraction = result?.[key][index];
-      const colorIndex = index === keys[0] ? 0 : index === keys[1] ? 1 : index < keys[0] ? 2 : 3;
-      const color = componentColors[colorIndex];
+      const color = index === keys[0] ? colors.teal
+        : index === keys[1] ? colors.violet
+          : nonkeyColors[nonkeyIndex++ % nonkeyColors.length];
       const segment = document.createElement('i');
       segment.className = 'stream-segment';
       segment.style.setProperty('--segment-width', `${100 * (fraction ?? 0)}%`);
@@ -302,8 +240,9 @@ function updateProductStreams(result) {
       line.classList.toggle('carryover', index === keys[keyIndex]);
       line.style.setProperty('--component-color', color);
       const role = index === keys[0] ? ' (light key)' : index === keys[1] ? ' (heavy key)' : '';
-      line.innerHTML = `<dt><i class="component-dot" aria-hidden="true"></i><span>${name}${role}</span></dt>
-        <dd>${fraction === undefined ? '—' : formatPercent.format(fraction)}</dd>`;
+      line.innerHTML = '<dt><i class="component-dot" aria-hidden="true"></i><span></span></dt><dd></dd>';
+      line.querySelector('span').textContent = `${name}${role}`;
+      line.querySelector('dd').textContent = fraction === undefined ? '—' : formatPercent.format(fraction);
       list.append(line);
     }
   }
@@ -348,15 +287,12 @@ function updateResults() {
       else message ||= 'Underwood gives a zero or negative reflux estimate for this target. Try higher key recoveries or a different feed quality.';
     }
     if (currentResult.rMin && multiple !== undefined) {
-      const reflux = multiple * currentResult.rMin;
-      const x = (multiple - 1) * currentResult.rMin / (reflux + 1);
-      const exponent = gillilandExponent(x);
-      const stages = estimateStages(nMin, exponent);
-      if (Number.isFinite(stages * 10)) {
-        const wholeStages = stages <= Number.MAX_SAFE_INTEGER ? Math.max(2, Math.ceil(stages)) : null;
+      const point = refluxPoint(nMin, currentResult.rMin, multiple);
+      if (point) {
+        const wholeStages = point.stages <= Number.MAX_SAFE_INTEGER ? Math.max(2, Math.ceil(point.stages)) : null;
         const above = wholeStages === null || feedPosition === undefined ? null : Math.round(feedPosition * (wholeStages - 2));
         const trays = above === null ? null : { above, below: wholeStages - 2 - above, feedTray: above + 1 };
-        currentResult.point = { reflux, x, y: -Math.expm1(exponent), stages, wholeStages, trays };
+        currentResult.point = { ...point, wholeStages, trays };
       } else {
         message ||= 'The operating point is too close to minimum reflux to plot. Increase the reflux multiplier or adjust the separation target.';
       }
@@ -429,9 +365,19 @@ function tickLabel(value, step) {
   return value.toFixed(precision).replace(/\.0+$/, '');
 }
 
-function drawMainChart(normalized) {
+function drawMainChart(normalized = document.querySelector('input[name="axes"]:checked').value === 'normalized') {
   const canvas = $('main-plot');
   const { ctx, width, height } = prepareCanvas(canvas);
+  const preview = refluxPreviewMultiplier === undefined || !currentResult?.rMin ? null
+    : refluxPoint(currentResult.nMin, currentResult.rMin, refluxPreviewMultiplier);
+  const previewLabel = $('sweep-preview');
+  previewLabel.hidden = refluxPreviewMultiplier === undefined || !currentResult?.rMin;
+  $('preview-legend').hidden = !preview;
+  if (!previewLabel.hidden) {
+    previewLabel.textContent = preview
+      ? `Preview · ${fixed(refluxPreviewMultiplier)} × minimum → ${formatEstimate(preview.stages)} stages`
+      : 'Preview · stage estimate rises beyond the plotted range';
+  }
   if (!currentResult?.rMin) {
     canvas.setAttribute('aria-label', 'Gilliland curve unavailable for the current inputs.');
     return;
@@ -534,6 +480,11 @@ function drawMainChart(normalized) {
     description += normalized
       ? ` Operating point: X = ${fixed(x)}, Y = ${fixed(y)}.`
       : ` Operating point: R = ${formatEstimate(reflux)}, N = ${formatEstimate(stages)}.`;
+  }
+  if (preview) {
+    const px = xAt(normalized ? preview.x : preview.reflux);
+    const py = yAt(normalized ? preview.y : preview.stages);
+    if (py >= top && py <= bottom) drawDot(ctx, px, py, 4, colors.teal);
   }
   canvas.setAttribute('aria-label', description);
 }
@@ -713,20 +664,13 @@ function drawCharts() {
 }
 
 $('column-form').addEventListener('submit', (event) => event.preventDefault());
-pairSelect.addEventListener('change', () => {
-  loadPreset();
-  updateResults();
-});
-$('mixture-rows').addEventListener('input', updateResults);
 $('column-form').addEventListener('reset', (event) => {
   event.preventDefault();
-  pairSelect.selectedIndex = 0;
   for (const { number, range } of controls) {
     number.value = number.defaultValue;
     range.value = range.defaultValue;
   }
-  loadPreset();
-  updateResults();
+  setCourseMixture();
 });
 document.querySelector('.chart-switch').addEventListener('change', drawCharts);
 $('open-notes').addEventListener('click', () => $('model-notes').showModal());
@@ -734,5 +678,5 @@ new ResizeObserver(drawCharts).observe($('main-plot'));
 $('equipment-mode').addEventListener('change', drawEquipment);
 new ResizeObserver(drawEquipment).observe($('equipment-plot'));
 new ResizeObserver(() => drawUnderwoodRoot(currentResult)).observe($('root-plot'));
-loadPreset();
-updateResults();
+initMixturePicker();
+setCourseMixture();

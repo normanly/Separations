@@ -3,7 +3,8 @@
 const $ = (id) => document.getElementById(id);
 
 const requestedCount = Number(new URLSearchParams(location.search).get('components'));
-const componentCount = Number.isInteger(requestedCount) && requestedCount >= 2 && requestedCount <= 4
+// The component picker allocates the feed in increments of 0.1 mol%.
+const componentCount = Number.isInteger(requestedCount) && requestedCount >= 2 && requestedCount <= 1000
   ? requestedCount
   : 4;
 

@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=theory-dof">
-  <script src="app.js?v=theory-dof" defer></script>
-  <script src="lessons.js?v=theory-dof" defer></script>
+  <link rel="stylesheet" href="styles.css?v=component-picker">
+  <script src="mixture.js?v=component-picker" defer></script>
+  <script src="app.js?v=component-picker" defer></script>
+  <script src="lessons.js?v=component-picker" defer></script>
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar" id="top">
     <div class="topbar-inner">
       <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span> Distillation Lab</a>
       <nav class="page-tabs" aria-label="Lab pages">
@@ -22,8 +23,8 @@
     </div>
   </header>
   <main class="container">
-    <nav class="nav-links" aria-label="Lesson sections">
-      <a href="#setup">Design inputs</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#gilliland">Gilliland</a><a href="theory.html#dof-calculation" data-dof-link>DOF proof</a>
+    <nav class="nav-links" aria-label="Lab sections">
+      <a href="#equipment">Column tour</a><a href="#setup">Set up the design</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#gilliland">Gilliland</a><a href="theory.html#dof-calculation" data-dof-link>DOF proof</a>
     </nav>
     <section class="intro" aria-labelledby="page-title">
       <div class="hero-copy">
@@ -35,6 +36,7 @@
           <div><dt>Stage</dt><dd>An ideal contact between rising vapor and falling liquid. The reboiler also counts as one stage.</dd></div>
           <div><dt>Reflux</dt><dd>Liquid returned to the column. Reflux ratio R is the return flow divided by the distillate flow.</dd></div>
           <div><dt>Keys</dt><dd>The two components your design aims to separate. The lighter key vaporizes more readily.</dd></div>
+          <div><dt>Products</dt><dd>Distillate leaves at the top. Bottoms leave through the reboiler.</dd></div>
         </dl>
       </div>
 
@@ -85,27 +87,55 @@
       <form id="column-form" class="dof-grid">
         <fieldset class="input-group">
           <legend>Given · Feed and mixture</legend>
-          <div class="pair-control">
+          <div class="component-picker" id="component-picker">
             <div class="option-with-help" data-option-help="mixture">
-              <label for="component-pair">Hydrocarbon mixture</label>
+              <label for="component-search">Search hydrocarbons</label>
             </div>
-            <select id="component-pair"></select>
-            <p>Choose a mixture. The preset volatilities are illustrative.</p>
+            <div class="component-search-field">
+              <span class="search-icon" aria-hidden="true"></span>
+              <input id="component-search" type="search" placeholder="Name or formula, e.g. propane or C3H8"
+                autocomplete="off" maxlength="60" aria-controls="component-results">
+            </div>
+            <ul class="component-results" id="component-results" aria-label="Matching hydrocarbons" hidden></ul>
+            <div class="custom-component" id="custom-component" hidden>
+              <p>Add <strong id="custom-name"></strong></p>
+              <div class="custom-component-row">
+                <span class="option-with-help" data-option-help="customAlpha">
+                  <label for="custom-alpha">Relative volatility</label>
+                </span>
+                <input class="value" id="custom-alpha" type="number" min="0.000000001" max="1000000000"
+                  step="any" inputmode="decimal" aria-describedby="custom-reference">
+                <button class="quiet-button" id="custom-add" type="button">Add</button>
+                <button class="quiet-button" id="custom-cancel" type="button">Cancel</button>
+              </div>
+              <p id="custom-reference"></p>
+              <p id="custom-error" class="input-error" role="status" hidden></p>
+            </div>
           </div>
-          <p class="input-caption" id="binary-caption">Enter the light-key mole fraction in the feed.</p>
-          <div id="mixture-inputs" hidden>
+          <div class="mixture-summary">
+            <p id="component-status" role="status">4 components selected</p>
+            <button class="quiet-button" id="sort-mixture" type="button" hidden>Sort by volatility</button>
+            <button class="quiet-button" id="clear-mixture" type="button">Clear mixture</button>
+          </div>
+          <p class="input-caption">Pick a search result to add it. Clear the mixture to start from scratch.</p>
+          <div id="mixture-inputs">
+            <div class="key-pair-field" id="key-pair-field">
+              <span class="option-with-help" data-option-help="keyPair"><label for="key-pair">Light / heavy key pair</label></span>
+              <select id="key-pair"></select>
+            </div>
             <table class="mixture-table">
-              <caption>Feed and volatility relative to the heavy key</caption>
+              <caption>Feed and relative volatility, most volatile first</caption>
               <thead>
                 <tr>
                   <th scope="col">Component</th>
                   <th scope="col"><span class="option-with-help" data-option-help="feedPercent">mol %</span></th>
                   <th scope="col"><span class="option-with-help" data-option-help="componentAlpha">α</span></th>
+                  <th scope="col"><span class="sr-only">Remove</span></th>
                 </tr>
               </thead>
               <tbody id="mixture-rows"></tbody>
             </table>
-            <p class="input-caption">The last component is the balance needed to reach 100 mol%.</p>
+            <p class="input-caption">Adding or removing components rebalances the feed to 100 mol%. Edit the illustrative α values for your conditions.</p>
           </div>
           <div id="basis-controls" class="column-controls"></div>
         </fieldset>
@@ -117,7 +147,7 @@
       </form>
       <p class="input-error" id="input-error" role="status" hidden></p>
       <div class="setup-footer">
-        <p>Clear a design value to see one choice reopen. Changing the feed defines a new case with the same four choices.</p>
+        <p>Changing the feed defines a new case. Each case takes the same four design choices.</p>
         <a href="theory.html#dof-calculation" data-dof-link>Work through the count in Theory</a>
       </div>
     </section>
@@ -145,7 +175,10 @@
           <p>With zero product withdrawal, the total-reflux balance matches the compositions of vapor and liquid passing each other between stages. That passes one stage’s enrichment to the next. After <var>N</var> contacts, the ratio has been multiplied by (α<sub>LK</sub>/α<sub>HK</sub>)<sup>N</sup>. Take logs to recover <var>N</var>. Withdrawing enriched product reduces the separation each contact can pass along. That is why this total-reflux calculation gives a lower bound for the stage count.</p>
           <p id="fenske-work" class="equation"></p>
         </details>
-        <a class="text-link" href="#equipment" data-equipment-case="total">See why product flow stops ↑</a>
+        <div class="lesson-links">
+          <a class="text-link" href="#equipment" data-equipment-case="total">See why product flow stops ↑</a>
+          <a class="text-link" href="#underwood">Continue to minimum reflux ↓</a>
+        </div>
       </div>
 
       <figure class="demo-panel key-demo">
@@ -183,7 +216,10 @@
           <canvas id="root-plot" role="img" aria-label="Feed equation root for the selected mixture"></canvas>
           <p class="plot-explanation" id="root-caption">The equation crosses zero between the key volatilities.</p>
         </details>
-        <a class="text-link" href="#equipment" data-equipment-case="minimum">See the column at minimum reflux ↑</a>
+        <div class="lesson-links">
+          <a class="text-link" href="#equipment" data-equipment-case="minimum">See the column at minimum reflux ↑</a>
+          <a class="text-link" href="#gilliland">Continue to working reflux ↓</a>
+        </div>
       </div>
       <figure class="demo-panel pinch-demo">
         <h3>Watch the stages crowd at a pinch</h3>
@@ -247,10 +283,12 @@
             <span id="operating-legend"><i class="legend-dot"></i>Operating point <span id="normalized-point" hidden></span></span>
             <span><i class="legend-line fenske-line"></i><span id="stage-legend">Fenske limit</span></span>
             <span><i class="legend-line underwood-line"></i><span id="reflux-legend">Underwood limit</span></span>
+            <span id="preview-legend" hidden><i class="legend-dot preview-dot"></i>Sweep preview</span>
           </div>
         </div>
         <div class="demo-panel sweep-panel">
           <h3>Trade reflux for stages</h3>
+          <p>The amber point is your design. The teal point previews other reflux choices.</p>
           <div class="sweep-label">
             <span class="option-with-help" data-option-help="refluxSweep">
               <label for="sweep-range">Operating reflux</label>
@@ -260,6 +298,7 @@
           <input type="range" id="sweep-range" min="1.05" max="5" step="0.01" value="1.5">
           <div class="control-endpoints"><span>Near minimum</span><span>More reflux</span></div>
           <button class="quiet-button" id="sweep-play" type="button">Play reflux sweep</button>
+          <p id="sweep-preview" class="sweep-preview" hidden></p>
           <details class="reasoning">
             <summary>Why use normalized axes?</summary>
             <p>X and Y measure how far the operating choice is from each limit on a common 0-to-1 scale.</p>
@@ -271,7 +310,10 @@
         </div>
       </div>
     </section>
-    <footer>Course model and four-component example · Constant relative volatility · Equilibrium stages</footer>
+    <footer class="lab-footer">
+      <span>Course model and four-component example · Constant relative volatility · Equilibrium stages</span>
+      <a href="#top">Back to top ↑</a>
+    </footer>
   </main>
 
   <dialog id="model-notes" aria-labelledby="notes-title">
@@ -279,7 +321,7 @@
       <h2 id="notes-title">Model notes</h2>
       <form method="dialog"><button class="quiet-button" type="submit" aria-label="Close model notes">✕</button></form>
     </div>
-    <p>This shortcut model uses constant relative volatility α for the light key (α<sub>LK</sub> = α, α<sub>HK</sub> = 1), constant molar overflow, a total condenser, and an equilibrium reboiler. Gilliland’s stage count includes the equilibrium reboiler. For tray allocation, the lab rounds up and allows at least one feed tray plus the reboiler. The specified fraction of inter-tray positions above the feed sets its location by rounding to the nearest tray. Hydrocarbon mixtures load illustrative relative volatilities. Use a value appropriate to the mixture, temperature, and pressure for engineering calculations.</p>
+    <p>This shortcut model uses constant relative volatilities with the heavy key as the reference (α<sub>HK</sub> = 1), constant molar overflow, a total condenser, and an equilibrium reboiler. Gilliland’s stage count includes the equilibrium reboiler. For tray allocation, the lab rounds up and allows at least one feed tray plus the reboiler. The specified fraction of inter-tray positions above the feed sets its location by rounding to the nearest tray. Starting catalog values use a rough boiling-point estimate. Use relative volatilities appropriate to the mixture, temperature, and pressure for engineering calculations.</p>
     <h3>Equilibrium and feed state</h3>
     <p>With constant relative volatilities, y<sub>i</sub> = α<sub>i</sub>x<sub>i</sub> / Σ α<sub>j</sub>x<sub>j</sub>. For an ideal mixture at a given temperature, Raoult’s law relates α to the ratio of saturation pressures, which can be estimated from Antoine’s equation. For a partially vaporized feed, q = 1 − β, where β is the vapor fraction from a flash calculation.</p>
     <h3>Fenske at total reflux</h3>
