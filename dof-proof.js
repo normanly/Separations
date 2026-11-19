@@ -7,6 +7,7 @@ const requestedCount = Number(new URLSearchParams(location.search).get('componen
 const componentCount = Number.isInteger(requestedCount) && requestedCount >= 2 && requestedCount <= 1000
   ? requestedCount
   : 4;
+const startingCount = `2T + ${componentCount + 13}`;
 
 function updateUnitCounts(components) {
   $('dof-components').textContent = components;
@@ -35,12 +36,12 @@ function showProofStep() {
     else row.removeAttribute('aria-current');
   });
   if (proofStep < 0) {
-    $('proof-current').textContent = 'Start with 2T + C + 13 remaining choices.';
+    $('proof-current').textContent = `With C = ${componentCount}, start with ${startingCount} remaining choices.`;
     button.textContent = 'Step through the count';
     return;
   }
   const [label, used, remaining] = Array.from(proofRows[proofStep].cells, (cell) => cell.textContent.trim());
-  const previous = proofStep === 0 ? '2T + C + 13' : proofRows[proofStep - 1].cells[2].textContent.trim();
+  const previous = proofStep === 0 ? startingCount : proofRows[proofStep - 1].cells[2].textContent.trim();
   $('proof-current').textContent = `${label} · (${previous}) − ${used} = ${remaining} remaining`;
   button.textContent = proofStep === proofRows.length - 1 ? 'Restart the count' : 'Next subtraction';
 }
@@ -48,3 +49,4 @@ $('proof-next').addEventListener('click', () => {
   proofStep = proofStep === proofRows.length - 1 ? -1 : proofStep + 1;
   showProofStep();
 });
+showProofStep();

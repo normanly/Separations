@@ -8,7 +8,8 @@ const parameters = [
   { key: 'feedPosition', label: 'Feed tray position', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'] },
 ];
 
-const designKeys = ['lightRecovery', 'heavyRecovery', 'multiple', 'feedPosition'];
+const recoveryKeys = ['lightRecovery', 'heavyRecovery'];
+const designKeys = [...recoveryKeys, 'multiple', 'feedPosition'];
 
 const optionHelp = {
   equipmentMode: ['Column operating case', 'Working design uses the reflux you chose. Total reflux returns all condensate and withdraws no product. At minimum reflux, the calculation reaches the limiting pinch that would take infinitely many stages.'],
@@ -26,7 +27,7 @@ const optionHelp = {
   condenserMode: ['Condenser split example', 'The reflux drum divides 100 mol of condensate into reflux and distillate. Use total reflux to see the Fenske limit, or choose a finite reflux to see how much distillate can leave.'],
   designAxes: ['Reflux and stages axes', 'Shows the actual reflux ratio R horizontally and the estimated number of stages N vertically. Use this view to read your operating point directly.'],
   normalizedAxes: ['Normalized axes', 'Shows the same operating point on 0-to-1 scales. X measures departure from minimum reflux and Y measures departure from minimum stages. This is the form used in the Gilliland correlation.'],
-  refluxSweep: ['Operating reflux slider', 'This controls the same reflux multiplier as the design input above. Moving it sets your design point and updates its stage estimate. The automatic sweep uses a separate preview marker.'],
+  refluxSweep: ['Operating reflux multiplier slider', 'This controls the same reflux multiplier as the design input above. Moving it sets your design point and updates its stage estimate. The automatic sweep uses a separate preview marker.'],
 };
 
 const colors = {
@@ -68,6 +69,12 @@ function underwood(alpha, feed, distillate, quality, [light, heavy]) {
   return { root, minimum: underwoodSum(alpha, distillate, root) - 1 };
 }
 
+function formatUnderwoodRoot({ root, alpha, keys: [light, heavy] }) {
+  const rounded = root.toFixed(3);
+  const inBracket = Number(rounded) > alpha[heavy] && Number(rounded) < alpha[light];
+  return inBracket ? rounded : String(root);
+}
+
 function gillilandExponent(x) {
   if (x <= 0) return -Infinity;
   if (x >= 1) return 0;
@@ -103,7 +110,8 @@ function createControl(parameter) {
       min="${min}" max="${max}" step="${step}" value="${initial}">
     <div class="control-endpoints" aria-hidden="true"><span>${ends[0]}</span><span>${ends[1]}</span></div>
   `;
-  $(designKeys.includes(key) ? 'design-controls' : 'basis-controls').append(control);
+  const group = recoveryKeys.includes(key) ? 'recovery-controls' : designKeys.includes(key) ? 'operating-controls' : 'basis-controls';
+  $(group).append(control);
   const number = $(`${key}-value`);
   const range = $(`${key}-range`);
 
@@ -283,9 +291,13 @@ function updateResults() {
     currentResult = { ...streams, quality, nMin };
     if (quality !== undefined) {
       const { root, minimum } = underwood(alpha, feed, distillate, quality, keys);
-      currentResult.root = root;
-      if (minimum > 1e-12) currentResult.rMin = minimum;
-      else message ||= 'Underwood gives a zero or negative reflux estimate for this target. Try higher key recoveries or a different feed quality.';
+      if (root > alpha[keys[1]] && root < alpha[keys[0]] && Number.isFinite(minimum)) {
+        currentResult.root = root;
+        if (minimum > 1e-12) currentResult.rMin = minimum;
+        else message ||= 'This Underwood shortcut did not find a positive minimum reflux for the selected split. Try higher key recoveries or a different feed liquid fraction.';
+      } else {
+        message ||= 'The key volatilities are too close to resolve the Underwood root at this precision. Check the relative volatilities or choose a different key pair.';
+      }
     }
     if (currentResult.rMin && multiple !== undefined) {
       const point = refluxPoint(nMin, currentResult.rMin, multiple);
@@ -306,7 +318,7 @@ function updateResults() {
   $('input-error').hidden = !message;
   $('min-stages').value = result ? formatEstimate(result.nMin) : '—';
   $('min-reflux').value = result?.rMin ? formatEstimate(result.rMin) : '—';
-  $('root-value').textContent = result?.root !== undefined ? `θ = ${result.root.toFixed(3)}` : '';
+  $('root-value').textContent = result?.root !== undefined ? `θ ≈ ${formatUnderwoodRoot(result)}` : '';
   $('operating-stages').value = point ? formatEstimate(point.stages) : '—';
   $('operating-reflux').value = point ? formatEstimate(point.reflux) : '—';
   $('rounded-stages').value = point?.wholeStages?.toLocaleString('en-US') ?? '—';
@@ -526,8 +538,11 @@ function drawUnderwoodRoot(result) {
   ctx.textAlign = 'right';
   ctx.fillText('αLK', right, height - 3);
   ctx.textAlign = 'center';
-  ctx.fillText(`θ = ${root.toFixed(3)}`, Math.max(left + 25, Math.min(right - 25, xAt(root))), middle + 16);
-  canvas.setAttribute('aria-label', `Underwood feed equation residual versus theta. The zero crossing is at theta ${root.toFixed(3)}, between heavy-key alpha ${fixed(low)} and light-key alpha ${fixed(high)}.`);
+  const reading = formatUnderwoodRoot(result);
+  const label = `θ ≈ ${reading}`;
+  const labelHalf = ctx.measureText(label).width / 2;
+  ctx.fillText(label, Math.max(labelHalf + 4, Math.min(width - labelHalf - 4, xAt(root))), middle + 16);
+  canvas.setAttribute('aria-label', `Underwood feed equation residual versus theta. The zero crossing is at theta approximately ${reading}, between heavy-key alpha ${low} and light-key alpha ${high}.`);
 }
 
 function drawEquipment() {
@@ -537,6 +552,8 @@ function drawEquipment() {
   const mode = $('equipment-mode').value;
   const total = mode === 'total';
   const minimum = mode === 'minimum';
+  $('equipment-basis').textContent = total ? 'Steady total reflux uses internal circulation only.'
+    : minimum ? 'Limiting target amounts on a 100 mol feed basis.' : 'Flow basis for the working case is 100 mol of feed.';
   flowRoutes = [];
   const reflux = minimum ? result?.rMin : result?.point?.reflux;
   const stages = total ? result?.nMin : minimum && result?.rMin ? Infinity : result?.point?.stages;
@@ -594,7 +611,7 @@ function drawEquipment() {
     ctx.stroke();
   };
 
-  const outletColor = total ? quiet : product;
+  const outletColor = total || minimum ? quiet : product;
   pipe([[entry, feedY], [column - towerHalf, feedY]], outletColor === quiet ? quiet : liquid, true);
   pipe([[column, 75], [column, 49], [condenser - 14, 49]], vapor, true);
   pipe([[condenser + 14, 49], [drum, 49], [drum, 76]], liquid, true);
@@ -635,7 +652,7 @@ function drawEquipment() {
   const caption = total
     ? 'The drum returns all condensate to the column. Feed, distillate, and bottoms are zero at steady total reflux.'
     : minimum
-      ? (result?.rMin ? 'A pinch stalls the separation at this reflux. The stream amounts show the limiting product split.' : 'Set valid column inputs with a positive minimum reflux to show the pinch case.')
+      ? (result?.rMin ? 'The stream labels show the target split. At minimum reflux a pinch stops a finite set of trays from reaching that target. The drawn trays show the flow path.' : 'Set valid column inputs with a positive minimum reflux to show the pinch case.')
       : reflux
         ? 'The reboiler sends vapor up the column. The condenser turns it into liquid, and the drum splits that liquid into reflux and distillate.'
         : 'The animation shows flow directions. Set up a mixture and operating conditions to calculate stream amounts.';
@@ -678,7 +695,8 @@ $('column-form').addEventListener('reset', (event) => {
 $('load-course-mixture').addEventListener('click', () => {
   resetControlValues();
   setCourseMixture();
-  $('key-pair').focus();
+  if ($('design-walkthrough').hidden) $('key-pair').focus();
+  else $('walkthrough-next').focus({ preventScroll: true });
 });
 document.querySelector('.chart-switch').addEventListener('change', drawCharts);
 $('open-notes').addEventListener('click', () => $('model-notes').showModal());

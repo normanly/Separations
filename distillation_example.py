@@ -12,10 +12,15 @@ heavy_recovery = 0.96              # Sent to the bottoms
 reflux_multiplier = 1.50
 feed_position = 0.50               # Top = 0, bottom = 1
 
+if len(names) != len(z) or len(alpha) != len(z):
+    raise ValueError("Give each component a name, feed fraction, and relative volatility.")
+if not (0 <= light < heavy < len(z) and heavy == light + 1):
+    raise ValueError("Choose adjacent light and heavy keys in volatility order.")
 if not isclose(sum(z), 1.0) or any(fraction <= 0 for fraction in z):
     raise ValueError("Use positive feed mole fractions that sum to one.")
 if not all(a > b > 0 for a, b in zip(alpha, alpha[1:])):
     raise ValueError("List the components in descending positive volatility.")
+alpha = [value / alpha[heavy] for value in alpha]
 if not 0 <= q <= 1 or not 0 <= feed_position <= 1:
     raise ValueError("Feed quality and feed position must be between zero and one.")
 if not (0.5 < light_recovery < 1 and 0.5 < heavy_recovery < 1):
@@ -28,9 +33,13 @@ components = len(z)
 dof = (components + 13) - (components + 2) - 1 - 2 - 3 - 1
 
 # 2. Apply the component material balance
-# The example assumes the lighter nonkey goes overhead and the heavier
-# nonkey goes to the bottoms.
-fraction_to_distillate = [1.0, light_recovery, 1.0 - heavy_recovery, 0.0]
+# Lighter nonkeys go overhead. Heavier nonkeys go to the bottoms.
+# The adjacent keys are the two components that split between products.
+fraction_to_distillate = (
+    [1.0] * light
+    + [light_recovery, 1.0 - heavy_recovery]
+    + [0.0] * (components - heavy - 1)
+)
 feed_i = [feed_moles * fraction for fraction in z]
 distillate_i = [
     moles * recovery for moles, recovery in zip(feed_i, fraction_to_distillate)
@@ -54,17 +63,21 @@ def underwood_sum(composition, theta):
 
 # The feed sum increases between these two adjacent volatilities.
 lower, upper = alpha[heavy], alpha[light]
-for _ in range(50):
+for _ in range(80):
     midpoint = (lower + upper) / 2
+    if midpoint in (lower, upper):
+        break
     if underwood_sum(z, midpoint) < 1 - q:
         lower = midpoint
     else:
         upper = midpoint
 
 theta = (lower + upper) / 2
+if not alpha[heavy] < theta < alpha[light]:
+    raise ValueError("The key volatilities are too close to resolve an Underwood root.")
 r_min = underwood_sum(x_d, theta) - 1
 if r_min <= 1e-12:
-    raise ValueError("This example needs a positive Underwood minimum reflux.")
+    raise ValueError("The key-root shortcut needs a positive minimum for the reflux multiplier.")
 
 # 5. Estimate stages at working reflux
 r = reflux_multiplier * r_min

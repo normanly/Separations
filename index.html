@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=walkthrough-reasons">
+  <link rel="stylesheet" href="styles.css?v=guided-design">
   <script src="mixture.js?v=empty-mixture" defer></script>
-  <script src="app.js?v=limit-visuals" defer></script>
-  <script src="lessons.js?v=limit-visuals" defer></script>
-  <script src="walkthrough.js?v=walkthrough-reasons" defer></script>
+  <script src="app.js?v=guided-design" defer></script>
+  <script src="lessons.js?v=guided-design" defer></script>
+  <script src="walkthrough.js?v=guided-design" defer></script>
 </head>
 <body>
   <header class="topbar" id="top">
@@ -45,7 +45,7 @@
         <div class="section-top connection-heading">
           <div>
             <h2 id="equipment-title">Follow the column flows</h2>
-            <p class="connection-caption">Flow basis for the working case: 100 mol of feed.</p>
+            <p class="connection-caption" id="equipment-basis">Flow basis for the working case is 100 mol of feed.</p>
           </div>
           <div class="equipment-mode option-with-help" data-option-help="equipmentMode">
             <label class="sr-only" for="equipment-mode">Column operating case</label>
@@ -81,7 +81,7 @@
           <p class="connection-caption">A degree of freedom is a choice the equations leave to you. Fix the feed and equipment assumptions, then make four choices: two key recoveries, the reflux, and the feed location.</p>
         </div>
         <div class="setup-actions">
-          <p class="dof-readout"><output id="dof-remaining" aria-live="polite">4</output> of 4 choices remaining</p>
+          <p class="dof-readout"><output id="dof-remaining" aria-live="polite">4</output> of 4 design inputs need attention</p>
           <button class="quiet-button" id="start-walkthrough" type="button">Start walkthrough</button>
           <button class="quiet-button reset" type="reset" form="column-form"><span aria-hidden="true">↻</span> Reset inputs</button>
         </div>
@@ -89,43 +89,48 @@
       <form id="column-form" class="dof-grid">
         <fieldset class="input-group">
           <legend>Given · Feed and mixture</legend>
-          <div class="component-picker" id="component-picker">
-            <div class="option-with-help" data-option-help="mixture">
-              <label for="component-search">Search hydrocarbons</label>
-            </div>
-            <div class="component-search-field">
-              <span class="search-icon" aria-hidden="true"></span>
-              <input id="component-search" type="search" placeholder="Name or formula, e.g. propane or C3H8"
-                autocomplete="off" maxlength="60" aria-controls="component-results">
-            </div>
-            <ul class="component-results" id="component-results" aria-label="Matching hydrocarbons" hidden></ul>
-            <div class="custom-component" id="custom-component" hidden>
-              <p>Add <strong id="custom-name"></strong></p>
-              <div class="custom-component-row">
-                <span class="option-with-help" data-option-help="customAlpha">
-                  <label for="custom-alpha">Relative volatility</label>
-                </span>
-                <input class="value" id="custom-alpha" type="number" min="0.000000001" max="1000000000"
-                  step="any" inputmode="decimal" aria-describedby="custom-reference">
-                <button class="quiet-button" id="custom-add" type="button">Add</button>
-                <button class="quiet-button" id="custom-cancel" type="button">Cancel</button>
+          <div id="mixture-picker-step">
+            <div class="component-picker" id="component-picker">
+              <div class="option-with-help" data-option-help="mixture">
+                <label for="component-search">Search hydrocarbons</label>
               </div>
-              <p id="custom-reference"></p>
-              <p id="custom-error" class="input-error" role="status" hidden></p>
+              <div class="component-search-field">
+                <span class="search-icon" aria-hidden="true"></span>
+                <input id="component-search" type="search" placeholder="Name or formula, e.g. propane or C3H8"
+                  autocomplete="off" maxlength="60" aria-controls="component-results">
+              </div>
+              <ul class="component-results" id="component-results" aria-label="Matching hydrocarbons" hidden></ul>
+              <div class="custom-component" id="custom-component" hidden>
+                <p>Add <strong id="custom-name"></strong></p>
+                <div class="custom-component-row">
+                  <span class="option-with-help" data-option-help="customAlpha">
+                    <label for="custom-alpha">Relative volatility</label>
+                  </span>
+                  <input class="value" id="custom-alpha" type="number" min="0.000000001" max="1000000000"
+                    step="any" inputmode="decimal" aria-describedby="custom-reference">
+                  <button class="quiet-button" id="custom-add" type="button">Add</button>
+                  <button class="quiet-button" id="custom-cancel" type="button">Cancel</button>
+                </div>
+                <p id="custom-reference"></p>
+                <p id="custom-error" class="input-error" role="status" hidden></p>
+              </div>
             </div>
-          </div>
-          <div class="mixture-summary">
-            <p id="component-status" role="status">0 components selected</p>
-            <button class="quiet-button" id="load-course-mixture" type="button">Load course example</button>
-            <button class="quiet-button" id="sort-mixture" type="button" hidden>Sort by volatility</button>
-            <button class="quiet-button" id="clear-mixture" type="button" hidden>Clear mixture</button>
+            <div class="mixture-summary">
+              <p id="component-status" role="status">0 components selected</p>
+              <button class="quiet-button" id="load-course-mixture" type="button">Load course example</button>
+              <button class="quiet-button" id="sort-mixture" type="button" hidden>Sort by volatility</button>
+              <button class="quiet-button" id="clear-mixture" type="button" hidden>Clear mixture</button>
+            </div>
           </div>
           <p class="input-caption" id="mixture-start">Search by name or formula and add at least two hydrocarbons.</p>
-          <div id="mixture-inputs" hidden>
-            <div class="key-pair-field" id="key-pair-field">
+          <div id="feed-conditions">
+            <div class="key-pair-field" id="key-pair-field" hidden>
               <span class="option-with-help" data-option-help="keyPair"><label for="key-pair">Light / heavy key pair</label></span>
               <select id="key-pair"></select>
             </div>
+            <div id="basis-controls" class="column-controls"></div>
+          </div>
+          <div id="mixture-inputs" hidden>
             <table class="mixture-table">
               <caption>Feed and relative volatility, most volatile first</caption>
               <thead>
@@ -140,12 +145,14 @@
             </table>
             <p class="input-caption">Adding or removing components rebalances the feed to 100 mol%. Edit the illustrative α values for your conditions.</p>
           </div>
-          <div id="basis-controls" class="column-controls"></div>
         </fieldset>
         <fieldset class="input-group">
           <legend>Choose · Four design specifications</legend>
-          <p class="input-caption">Recovery is the share of a component in the feed that reaches its intended product. A higher recovery sends less of that key to the other product.</p>
-          <div id="design-controls" class="column-controls"></div>
+          <p class="input-caption">All four inputs have starting values. The lab needs a valid feed to calculate a design. Recovery is the share of an incoming component that reaches its intended product.</p>
+          <div id="design-controls" class="column-controls">
+            <div id="recovery-controls"></div>
+            <div id="operating-controls"></div>
+          </div>
         </fieldset>
       </form>
       <p class="input-error" id="input-error" role="status" hidden></p>
@@ -200,7 +207,7 @@
             </dl>
           </div>
           <figcaption>
-            The condenser turns 100 mol of overhead vapor into liquid. The drum splits it between reflux and distillate, so <var>V</var> = <var>L</var> + <var>D</var>. With <var>R</var> = <var>L</var>/<var>D</var>, the distillate is <var>D</var> = 100/(<var>R</var> + 1).
+            Here 100 mol refers to overhead vapor entering the condenser. The drum splits the condensed liquid between reflux and distillate, so <var>V</var> = <var>L</var> + <var>D</var>. With <var>R</var> = <var>L</var>/<var>D</var>, the distillate is <var>D</var> = 100/(<var>R</var> + 1).
             <strong id="condenser-proof-result"></strong>
           </figcaption>
         </figure>
@@ -213,7 +220,8 @@
       <figure class="demo-panel key-demo">
         <h3>Enrich the light key, stage by stage</h3>
         <p>Compare just the two keys. The light-to-heavy ratio multiplies by <strong id="stage-factor">—</strong> each stage.</p>
-        <div class="key-bars">
+        <p id="stage-empty">Set the feed and recoveries to see the two key fractions.</p>
+        <div class="key-bars" id="stage-bars" hidden>
           <div><div class="bar-heading"><span>Starting at the bottom</span><strong id="stage-start-value">—</strong></div><div class="key-bar"><i id="stage-start-bar"></i></div></div>
           <div class="key-current"><div class="bar-heading"><span id="stage-label">Stage 0</span><strong id="stage-current-value">—</strong></div><div class="key-bar"><i id="stage-current-bar"></i></div></div>
           <div><div class="bar-heading"><span>Distillate target</span><strong id="stage-target-value">—</strong></div><div class="key-bar"><i id="stage-target-bar"></i></div></div>
@@ -279,6 +287,7 @@
           <p>The feed is saturated liquid, so its balance is vertical at x = z<sub>F</sub> = 0.50. Equilibrium gives y* = 2.50x / [1 + (2.50 − 1)x] = 0.714 there.</p>
           <p>The rectifying line obeys y = (Rx + x<sub>D</sub>) / (R + 1). Make it pass through the pinch with x<sub>D</sub> = 0.95 and solve for R.</p>
           <p class="equation">R<sub>min</sub> = (0.95 − 0.714) / (0.714 − 0.50) ≈ 1.10</p>
+          <p>The Underwood feed equation for this same example gives θ ≈ 1.4286. Using 95 mol% benzene in the distillate in the second equation gives the same minimum reflux, 1.10.</p>
           <p>At this reflux, a step starting at x = 0.50 ends at x = 0.50. Both the operating line and the equilibrium curve increase with composition, so a step starting above 0.50 also ends above 0.50. Every finite sequence from the distillate stays above the feed composition.</p>
         </details>
       </figure>
@@ -319,13 +328,15 @@
             <span><i class="legend-line underwood-line"></i><span id="reflux-legend">Underwood limit</span></span>
             <span id="preview-legend" hidden><i class="legend-dot preview-dot"></i>Sweep preview</span>
           </div>
+          <p class="plot-explanation">The lab rounds up to whole stages with at least one tray and one equilibrium reboiler. The feed tray position allocates trays without changing the total.</p>
+          <a class="text-link" href="#fenske">Compare the two limits ↑</a>
         </div>
         <div class="demo-panel sweep-panel">
           <h3>Trade reflux for stages</h3>
           <p>The amber point is your design. The teal point previews other reflux choices.</p>
           <div class="sweep-label">
             <span class="option-with-help" data-option-help="refluxSweep">
-              <label for="sweep-range">Operating reflux</label>
+              <label for="sweep-range">Operating reflux multiplier</label>
             </span>
             <output id="sweep-multiple" for="sweep-range">—</output>
           </div>
@@ -361,10 +372,11 @@
       <div class="walkthrough-body">
         <p class="walkthrough-progress" id="walkthrough-progress"></p>
         <progress class="walkthrough-progress-bar" id="walkthrough-bar" aria-hidden="true"></progress>
-        <h2 class="sr-only" id="walkthrough-title"></h2>
+        <h2 id="walkthrough-title"></h2>
         <p id="walkthrough-instruction"></p>
         <p class="walkthrough-why" id="walkthrough-why"><strong>Why now?</strong> <span id="walkthrough-reason"></span></p>
         <p class="walkthrough-status" id="walkthrough-status" role="status" hidden></p>
+        <button class="walkthrough-edit" id="walkthrough-edit" type="button" hidden>Exit to edit setup</button>
       </div>
       <div class="walkthrough-actions">
         <button class="walkthrough-skip" id="walkthrough-skip" type="button">Skip walkthrough</button>

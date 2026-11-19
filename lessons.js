@@ -184,9 +184,12 @@ function updateFenskeLesson(result) {
   stagePlay.disabled = !result;
   stageNext.disabled = !result;
   stagePlayback.sync();
-  $('stage-factor').textContent = result ? formatEstimate(factor) : '—';
+  $('stage-empty').hidden = Boolean(result);
+  $('stage-bars').hidden = !result;
+  const factorLabel = !result ? '—' : factor < 1.005 ? String(factor) : formatEstimate(factor);
+  $('stage-factor').textContent = factorLabel;
   $('fenske-work').textContent = result
-    ? `ln(${formatEstimate(target)} ÷ ${formatEstimate(start)}) ÷ ln(${formatEstimate(factor)}) = ${formatEstimate(result.nMin)} stages`
+    ? `ln(${formatEstimate(target)} ÷ ${formatEstimate(start)}) ÷ ln(${factorLabel}) ≈ ${formatEstimate(result.nMin)} stages`
     : 'Enter the feed and both key recoveries to work this example.';
   for (const [position, ratio] of [['start', start], ['target', target]]) {
     const share = ratio ? 100 * ratio / (1 + ratio) : 0;
@@ -374,7 +377,7 @@ function updateLessonReadouts() {
   sweep.style.setProperty('--fill', `${100 * (sweep.valueAsNumber - Number(sweep.min)) / (Number(sweep.max) - Number(sweep.min))}%`);
   if (root !== undefined) {
     const sum = underwoodSum(result.alpha, result.distillate, root);
-    $('underwood-work').textContent = `q = ${fixed(result.quality)} → 1 − q = ${fixed(1 - result.quality)} → θ = ${root.toFixed(3)}. The second sum gives Rmin = ${fixed(sum)} − 1 = ${fixed(sum - 1)}.`;
+    $('underwood-work').textContent = `q = ${fixed(result.quality)} → 1 − q = ${fixed(1 - result.quality)} → θ ≈ ${formatUnderwoodRoot(result)}. The second sum is approximately ${formatEstimate(sum)}. Subtract 1 from the unrounded sum for Rmin ≈ ${formatEstimate(sum - 1)}.`;
     $('root-caption').textContent = 'The curve plots the difference between the two sides of the feed equation. The highlighted zero is the root between the key volatilities.';
   } else {
     $('underwood-work').textContent = 'Enter the feed, feed quality, and both key recoveries to work this example.';
@@ -382,7 +385,7 @@ function updateLessonReadouts() {
   }
   const point = result?.point;
   $('gilliland-work').textContent = point
-    ? `At R = ${formatEstimate(point.reflux)}, X = ${point.x.toFixed(3)}. The fit gives Y = ${point.y.toFixed(3)}. Rearranging gives N = (Nmin + Y) / (1 − Y) = ${formatEstimate(point.stages)} stages.`
+    ? `At R ≈ ${formatEstimate(point.reflux)}, X ≈ ${point.x.toFixed(3)} and the fit gives Y ≈ ${point.y.toFixed(3)}. With unrounded values, N = (Nmin + Y) / (1 − Y) ≈ ${formatEstimate(point.stages)} stages.`
     : 'Set a working reflux multiplier to calculate X, Y, and the estimated stage count.';
 }
 

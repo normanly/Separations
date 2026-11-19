@@ -22,7 +22,7 @@
   <main class="container study-page">
     <header class="study-intro">
       <h1>Python step by step</h1>
-      <p>Reproduce the lab’s four-component example in a Python script or notebook. Run the blocks from top to bottom, or download the complete script. It uses only Python’s standard library.</p>
+      <p>Reproduce the lab’s four-component example in a Python script or notebook. Run the blocks from top to bottom so each calculation has the result it needs from the previous steps. The complete script uses only Python’s standard library.</p>
       <div class="study-actions">
         <a class="primary-button" href="distillation_example.py" download>Download Python script <span aria-hidden="true">↓</span></a>
         <code class="run-command">python3 distillation_example.py</code>
@@ -42,7 +42,8 @@
       <article class="study-content">
         <section class="panel study-section" id="feed">
           <h2>1. Set the feed and design choices</h2>
-          <p>Enter mole fractions as decimals that add to one. Set the feed quality and four independent design choices from the lab. Python lists start at index zero, so n-hexane and n-heptane have indices 1 and 2.</p>
+          <p>Start on a 100 mol feed basis. Enter each feed mole fraction as a decimal and make them add to one. Here <var>q</var> = 0.50 means that half the feed moles are liquid. The design choices are the two key recoveries, the operating reflux multiplier, and the feed tray position.</p>
+          <p>Python lists start at index zero, so n-hexane and n-heptane have indices 1 and 2. The key pair is adjacent in volatility order. The code scales the volatilities so that the heavy key has α = 1, as in the lab.</p>
           <pre tabindex="0" aria-label="Python code for step 1"><code class="python-step">from math import ceil, exp, floor, isclose, log, sqrt
 
 feed_moles = 100.0
@@ -56,10 +57,15 @@ heavy_recovery = 0.96              # Sent to the bottoms
 reflux_multiplier = 1.50
 feed_position = 0.50               # Top = 0, bottom = 1
 
+if len(names) != len(z) or len(alpha) != len(z):
+    raise ValueError(&quot;Give each component a name, feed fraction, and relative volatility.&quot;)
+if not (0 &lt;= light &lt; heavy &lt; len(z) and heavy == light + 1):
+    raise ValueError(&quot;Choose adjacent light and heavy keys in volatility order.&quot;)
 if not isclose(sum(z), 1.0) or any(fraction &lt;= 0 for fraction in z):
     raise ValueError(&quot;Use positive feed mole fractions that sum to one.&quot;)
 if not all(a &gt; b &gt; 0 for a, b in zip(alpha, alpha[1:])):
     raise ValueError(&quot;List the components in descending positive volatility.&quot;)
+alpha = [value / alpha[heavy] for value in alpha]
 if not 0 &lt;= q &lt;= 1 or not 0 &lt;= feed_position &lt;= 1:
     raise ValueError(&quot;Feed quality and feed position must be between zero and one.&quot;)
 if not (0.5 &lt; light_recovery &lt; 1 and 0.5 &lt; heavy_recovery &lt; 1):
@@ -74,10 +80,15 @@ dof = (components + 13) - (components + 2) - 1 - 2 - 3 - 1</code></pre>
 
         <section class="panel study-section" id="balance">
           <h2>2. Apply the component material balance</h2>
-          <p>Multiply each feed amount by its fraction sent to the distillate. The leftovers form the bottoms. Divide each product’s component amounts by its total to get its mole fractions.</p>
-          <pre tabindex="0" aria-label="Python code for step 2"><code class="python-step"># The example assumes the lighter nonkey goes overhead and the heavier
-# nonkey goes to the bottoms.
-fraction_to_distillate = [1.0, light_recovery, 1.0 - heavy_recovery, 0.0]
+          <p>The shortcut sends lighter nonkeys entirely to the distillate and heavier nonkeys entirely to the bottoms. The keys split between both products. For example, 96% of n-heptane enters the bottoms, leaving 4% in the distillate.</p>
+          <p>Multiply each feed amount by its fraction sent to the distillate. The remainder enters the bottoms. Divide each component amount by the total moles in its product to get its product mole fraction. These compositions set the separation target for Fenske and Underwood.</p>
+          <pre tabindex="0" aria-label="Python code for step 2"><code class="python-step"># Lighter nonkeys go overhead. Heavier nonkeys go to the bottoms.
+# The adjacent keys are the two components that split between products.
+fraction_to_distillate = (
+    [1.0] * light
+    + [light_recovery, 1.0 - heavy_recovery]
+    + [0.0] * (components - heavy - 1)
+)
 feed_i = [feed_moles * fraction for fraction in z]
 distillate_i = [
     moles * recovery for moles, recovery in zip(feed_i, fraction_to_distillate)
@@ -91,7 +102,7 @@ x_b = [moles / bottoms for moles in bottoms_i]</code></pre>
 
         <section class="panel study-section" id="fenske">
           <h2>3. Calculate Fenske&#x27;s minimum stage count</h2>
-          <p>Divide the top key ratio by the bottom key ratio. One ideal contact multiplies the ratio by the key volatility ratio. Taking natural logs gives the number of contacts needed at total reflux.</p>
+          <p>Divide the top light-to-heavy key ratio by the bottom ratio to find the enrichment required. At total reflux, one ideal contact multiplies the ratio by the key volatility ratio. Taking natural logs gives the minimum number of contacts. In that limit every mole of condensate returns to the column and no distillate is withdrawn.</p>
           <pre tabindex="0" aria-label="Python code for step 3"><code class="python-step">top_ratio = x_d[light] / x_d[heavy]
 bottom_ratio = x_b[light] / x_b[heavy]
 key_volatility = alpha[light] / alpha[heavy]
@@ -100,29 +111,35 @@ n_min = log(top_ratio / bottom_ratio) / log(key_volatility)</code></pre>
 
         <section class="panel study-section" id="underwood">
           <h2>4. Solve the Underwood equations</h2>
-          <p>Find θ by bisection. If the sum at the midpoint is below 1 − q, move the lower bound up. Otherwise move the upper bound down. Evaluate the second sum at the resulting θ and subtract one.</p>
+          <p>Underwood uses the feed composition and its vapor fraction, 1 − <var>q</var>, to find θ between the heavy- and light-key volatilities. The sum increases across this interval. At each midpoint, move the lower bound up when the sum is below 1 − <var>q</var>. Otherwise move the upper bound down.</p>
+          <p>Use the same θ with the distillate mole fractions, then subtract one to get minimum reflux. At that limit the composition change between stages approaches zero at a pinch. A working column needs higher reflux to reach the separation with finitely many stages.</p>
           <pre tabindex="0" aria-label="Python code for step 4"><code class="python-step">def underwood_sum(composition, theta):
     return sum(a * x / (a - theta) for a, x in zip(alpha, composition))
 
 
 # The feed sum increases between these two adjacent volatilities.
 lower, upper = alpha[heavy], alpha[light]
-for _ in range(50):
+for _ in range(80):
     midpoint = (lower + upper) / 2
+    if midpoint in (lower, upper):
+        break
     if underwood_sum(z, midpoint) &lt; 1 - q:
         lower = midpoint
     else:
         upper = midpoint
 
 theta = (lower + upper) / 2
+if not alpha[heavy] &lt; theta &lt; alpha[light]:
+    raise ValueError(&quot;The key volatilities are too close to resolve an Underwood root.&quot;)
 r_min = underwood_sum(x_d, theta) - 1
 if r_min &lt;= 1e-12:
-    raise ValueError(&quot;This example needs a positive Underwood minimum reflux.&quot;)</code></pre>
+    raise ValueError(&quot;The key-root shortcut needs a positive minimum for the reflux multiplier.&quot;)</code></pre>
         </section>
 
         <section class="panel study-section" id="gilliland">
           <h2>5. Estimate stages at working reflux</h2>
-          <p>Set the operating reflux, calculate X, and use the exponential fit to find Y. Rearrange for the stage estimate. Round up, reserve one stage for the reboiler, and place the feed using the remaining trays.</p>
+          <p>Multiply the minimum reflux by 1.50 to choose a working reflux. X measures how far the working reflux is above the minimum. The Gilliland fit gives Y, which measures how far the estimated number of stages is above Fenske’s minimum.</p>
+          <p>Round up to whole equilibrium stages and reserve one for the reboiler. The chosen feed position places the feed on one of the other stages. It allocates the trays above and below the feed without changing the total stage estimate.</p>
           <pre tabindex="0" aria-label="Python code for step 5"><code class="python-step">r = reflux_multiplier * r_min
 x = (r - r_min) / (r + 1)
 exponent = (1 + 54.4 * x) / (11 + 117.2 * x) * (x - 1) / sqrt(x)

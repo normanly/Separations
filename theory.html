@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0d171d">
   <title>Distillation theory · Distillation Lab</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="dof-proof.js?v=component-picker" defer></script>
+  <script src="dof-proof.js?v=worked-dof" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -34,66 +34,26 @@
     <div class="study-layout">
       <nav class="panel study-nav" aria-label="Theory sections">
         <a href="#choices">Degrees of freedom</a>
-        <a href="#dof-calculation">Worked DOF calculation</a>
         <a href="#balance">Feed and product balance</a>
         <a href="#fenske-theory">Fenske equation</a>
         <a href="#underwood-theory">Underwood equations</a>
         <a href="#gilliland-theory">Gilliland correlation</a>
         <a href="#assumptions">Model assumptions</a>
+        <a href="#dof-calculation">Worked DOF calculation</a>
       </nav>
 
       <article class="study-content">
         <section class="panel study-section" id="choices">
           <h2>Degrees of freedom</h2>
-          <p>Subtract the number of independent equations from the number of unknowns. The result is the number of independent values you must supply. In the course column model, the balances and equipment assumptions leave four design choices. In this example they are:</p>
+          <p>Subtract the number of independent equations from the number of unknowns. The result is the number of independent values you must supply. After specifying the feed and equipment conditions, this course model leaves four design choices. The lab starts those four fields with these example values.</p>
           <dl class="study-facts">
             <div><dt>Light-key recovery</dt><dd>Send 95% of the n-hexane in the feed to the distillate.</dd></div>
             <div><dt>Heavy-key recovery</dt><dd>Send 96% of the n-heptane in the feed to the bottoms.</dd></div>
-            <div><dt>Operating reflux</dt><dd>Return 1.50 times the minimum reflux ratio.</dd></div>
+            <div><dt>Operating reflux</dt><dd>Set the operating reflux ratio to 1.50 times the minimum reflux ratio.</dd></div>
             <div><dt>Feed tray position</dt><dd>Place the feed near the middle of the estimated trays.</dd></div>
           </dl>
           <p>Feed composition and quality define the problem. In a four-component feed, three mole fractions are independent because the fourth follows from the requirement that they sum to one. Changing the feed creates a new case with the same four design choices.</p>
           <p><a href="#dof-calculation">See the course count by equipment and constraint</a></p>
-        </section>
-
-        <section class="panel dof-proof" id="dof-calculation" aria-labelledby="dof-proof-title">
-          <h2 id="dof-proof-title">Worked degrees-of-freedom calculation</h2>
-          <p>Degrees of freedom equal unknowns minus independent equations. This count uses the course column with a rectifying section, a stripping section, one feed tray, a condenser, a reflux drum that splits liquid, and an equilibrium reboiler.</p>
-          <h3>Assemble the column</h3>
-          <p>Let <var>C</var> be the number of components (currently <strong id="dof-components">4</strong>), and let <var>T</var> be the number of rectifying and stripping trays combined, excluding the feed tray and reboiler. The standalone counts use the course convention.</p>
-          <dl id="unit-counts"></dl>
-          <p>Start with <var>n</var> equilibrium trays. Each neighboring pair shares a vapor and a liquid stream. Subtract those repeated variables and add one choice for the section tray count.</p>
-          <p class="equation">n(2C + 6) − 2(n − 1)(C + 2) + 1 = 2n + 2C + 5</p>
-          <p>Add both sections, the feed tray, condenser, reboiler, and reflux splitter.</p>
-          <p class="equation">[2T + 4C + 10] + [3C + 8] + 2[C + 4] + [C + 5] = 2T + 10C + 31</p>
-          <p>Count the nine streams shared between those units once. Three are the overhead vapor, condensate, and reflux. The other six are the paired liquid and vapor links on either side of the feed tray and at the reboiler. Each shared stream has <var>C</var> + 2 independent variables: total flow, <var>C</var> − 1 mole fractions, temperature, and pressure.</p>
-          <p class="equation">2T + 10C + 31 − 9(C + 2) = 2T + C + 13</p>
-
-          <div class="section-top proof-heading">
-            <h3>Apply the specifications</h3>
-            <button class="quiet-button" id="proof-next" type="button">Step through the count</button>
-          </div>
-          <div class="proof-readout" id="proof-current" role="status">Start with 2T + C + 13 remaining choices.</div>
-          <table class="proof-table">
-            <thead><tr><th scope="col">Specification</th><th scope="col">Uses</th><th scope="col">DOF left</th></tr></thead>
-            <tbody>
-              <tr><th scope="row">Pressure and heat duty for each section tray</th><td>2T</td><td><span id="dof-after-trays">17</span></td></tr>
-              <tr><th scope="row">Inlet flow basis, composition, and thermal state</th><td id="dof-feed-used">6</td><td>11</td></tr>
-              <tr><th scope="row">Adiabatic reflux splitter</th><td>1</td><td>10</td></tr>
-              <tr><th scope="row">Pressure and heat duty at the feed tray</th><td>2</td><td>8</td></tr>
-              <tr><th scope="row">Condenser, reboiler, and reflux splitter pressures</th><td>3</td><td>5</td></tr>
-              <tr><th scope="row">Saturated liquid from the total condenser</th><td>1</td><td><strong>4</strong></td></tr>
-            </tbody>
-          </table>
-          <p>The four remaining choices are the light- and heavy-key recoveries, the operating reflux multiplier, and the feed tray position. Once you provide all four, the running count at the top reads zero. For comparison, the course simulation case specifies the two section tray counts, distillate flow, and operating reflux ratio.</p>
-
-          <h3>Why the inlet is editable</h3>
-          <p>The inlet uses <var>C</var> + 2 specifications: one flow basis, <var>C</var> − 1 independent mole fractions, and two thermal-state properties (temperature and pressure in the course count). Each run fixes these values. Editing them defines a new feed case with the same number of independent design choices. The lab fixes the flow basis at 100 mol and represents inlet state through feed quality <var>q</var>. A real feed temperature and pressure would be used in a flash calculation to obtain that quality.</p>
-          <ul>
-            <li><strong>Composition.</strong> With four components, three feed mole fractions are independent. The fourth equals 100% minus their sum. The lab fills in the final fraction to keep the total at 100%. At fixed recoveries, a different feed composition changes the product flows and compositions and can change minimum reflux.</li>
-            <li><strong>Feed quality.</strong> Changing <var>q</var> changes the right-hand side 1 − <var>q</var> of Underwood’s feed equation. It can therefore change the minimum reflux and the operating stage estimate. With key recoveries and relative volatilities held fixed, Fenske’s minimum stages stay the same.</li>
-          </ul>
-          <a href="index.html#column-form">Back to the inlet and design inputs</a>
         </section>
 
         <section class="panel study-section" id="balance">
@@ -115,11 +75,11 @@
 
         <section class="panel study-section" id="fenske-theory">
           <h2>Fenske gives the fewest stages</h2>
-          <p>At total reflux, the condenser returns all liquid to the column. No product leaves. In one ideal contact, the vapor’s light-to-heavy key ratio is the liquid’s ratio multiplied by the relative volatility of the two keys.</p>
+          <p>At total reflux, the condenser returns all liquid to the column. At steady state the feed and both product flows are zero. In one ideal contact, the vapor’s light-to-heavy key ratio is the liquid’s ratio multiplied by the relative volatility of the two keys.</p>
           <p class="equation">(y<sub>LK</sub>/y<sub>HK</sub>) = (α<sub>LK</sub>/α<sub>HK</sub>) × (x<sub>LK</sub>/x<sub>HK</sub>)</p>
           <p>With total reflux, the balance passes that enrichment from stage to stage. If each stage multiplies the ratio by 2, then <var>N</var> stages multiply it by 2<sup>N</sup>. Here, the distillate key ratio is 23.75 ÷ 1.00 and the bottoms key ratio is 1.25 ÷ 24.00. The required enrichment is 456-fold.</p>
           <p class="equation">2<sup>Nₘᵢₙ</sup> = 456 → N<sub>min</sub> = ln(456) / ln(2) = 8.83 stages</p>
-          <p>Fenske supplies the lower stage limit for the specified products and the assumed constant relative volatilities. <a href="index.html#fenske">Watch the stages enrich the light key</a></p>
+          <p>Fenske uses the target compositions to estimate the stage limit. At total reflux, those compositions represent the top and bottom liquids in the column. <a href="index.html#fenske">Watch the stages enrich the light key</a></p>
         </section>
 
         <section class="panel study-section" id="underwood-theory">
@@ -146,6 +106,58 @@
           <h2>Model assumptions</h2>
           <p>The shortcut uses constant relative volatility, constant molar overflow, a total condenser, and an equilibrium reboiler. Components more volatile than the light key go entirely to the distillate. Components less volatile than the heavy key go entirely to the bottoms. The sample volatilities are illustrative, and real equipment design requires additional thermodynamic and hydraulic checks.</p>
           <a class="primary-button" href="python.html">Work the example in Python <span aria-hidden="true">→</span></a>
+        </section>
+
+        <section class="panel dof-proof" id="dof-calculation" aria-labelledby="dof-proof-title">
+          <h2 id="dof-proof-title">Worked degrees-of-freedom calculation</h2>
+          <p>Degrees of freedom equal unknowns minus independent equations. This count uses the course column with a rectifying section, a stripping section, one feed tray, a condenser, a reflux drum that splits liquid, and an equilibrium reboiler.</p>
+          <h3>Assemble the column</h3>
+          <p>Let <var>C</var> be the number of components (currently <strong id="dof-components">4</strong>), and let <var>T</var> be the number of rectifying and stripping trays combined, excluding the feed tray and reboiler. The standalone counts use the course convention.</p>
+          <dl id="unit-counts"></dl>
+          <details class="reasoning">
+            <summary>Count the unknowns and equations in each unit</summary>
+            <p>Each stream has <var>C</var> + 2 unknowns. Count its total flow, <var>C</var> − 1 independent mole fractions, temperature, and pressure. Each unit adds its own temperature, pressure, and heat duty. Each outlet shares the unit temperature and pressure, giving two equations per outlet.</p>
+            <ul>
+              <li><strong>Equilibrium tray.</strong> Four streams give 4(<var>C</var> + 2) + 3 unknowns. Subtract <var>C</var> component balances, one energy balance, <var>C</var> phase equilibrium relations, and four outlet temperature and pressure equations. The difference is 2<var>C</var> + 6.</li>
+              <li><strong>Feed tray.</strong> Adding a feed stream adds <var>C</var> + 2 unknowns. The same equations apply, so the difference is 3<var>C</var> + 8.</li>
+              <li><strong>Equilibrium reboiler.</strong> One inlet and two outlets give 3(<var>C</var> + 2) + 3 unknowns. Subtract the same 2<var>C</var> + 5 equations as for an equilibrium tray. The difference is <var>C</var> + 4.</li>
+              <li><strong>Total condenser.</strong> One vapor inlet and one liquid outlet give 2(<var>C</var> + 2) + 3 unknowns. The <var>C</var> component balances, energy balance, and two outlet temperature and pressure equations leave <var>C</var> + 4. The saturation condition for the liquid outlet is specified later.</li>
+              <li><strong>Reflux splitter.</strong> One inlet and two outlets give 3(<var>C</var> + 2) + 3 unknowns. Subtract <var>C</var> component balances, one energy balance, four outlet temperature and pressure equations, and <var>C</var> − 1 equations equating the two outlet compositions. The difference is <var>C</var> + 5.</li>
+            </ul>
+          </details>
+          <p>Start with <var>n</var> equilibrium trays. Each neighboring pair shares a vapor and a liquid stream. Subtract those repeated variables and add one choice for the section tray count.</p>
+          <p class="equation">n(2C + 6) − 2(n − 1)(C + 2) + 1 = 2n + 2C + 5</p>
+          <p>Add both sections, the feed tray, condenser, reboiler, and reflux splitter.</p>
+          <p class="equation">[2T + 4C + 10] + [3C + 8] + 2[C + 4] + [C + 5] = 2T + 10C + 31</p>
+          <p>Count the nine streams shared between those units once. Three are the overhead vapor, condensate, and reflux. The other six are the paired liquid and vapor links on either side of the feed tray and at the reboiler. Each shared stream has <var>C</var> + 2 independent variables: total flow, <var>C</var> − 1 mole fractions, temperature, and pressure.</p>
+          <p class="equation">2T + 10C + 31 − 9(C + 2) = 2T + C + 13</p>
+
+          <div class="section-top proof-heading">
+            <h3>Apply the specifications</h3>
+            <button class="quiet-button" id="proof-next" type="button">Step through the count</button>
+          </div>
+          <div class="proof-readout" id="proof-current" role="status">With C = 4, start with 2T + 17 remaining choices.</div>
+          <table class="proof-table">
+            <thead><tr><th scope="col">Specification</th><th scope="col">Uses</th><th scope="col">DOF left</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Pressure and heat duty for each section tray</th><td>2T</td><td><span id="dof-after-trays">17</span></td></tr>
+              <tr><th scope="row">Inlet flow basis, composition, and thermal state</th><td id="dof-feed-used">6</td><td>11</td></tr>
+              <tr><th scope="row">Adiabatic reflux splitter</th><td>1</td><td>10</td></tr>
+              <tr><th scope="row">Pressure and heat duty at the feed tray</th><td>2</td><td>8</td></tr>
+              <tr><th scope="row">Condenser, reboiler, and reflux splitter pressures</th><td>3</td><td>5</td></tr>
+              <tr><th scope="row">Saturated liquid from the total condenser</th><td>1</td><td><strong>4</strong></td></tr>
+            </tbody>
+          </table>
+          <p>After specifying tray pressures and duties, the remaining count is (<var>C</var> + 13) − (<var>C</var> + 2) − 1 − 2 − 3 − 1 = 4. Increasing the number of components adds the same number of variables to the inlet specification as to the column count.</p>
+          <p>The four remaining choices are the light- and heavy-key recoveries, the operating reflux multiplier, and the feed tray position. The Interactive Lab supplies initial values for all four. Enter a valid feed to calculate the limits for your case. For comparison, the course simulation case specifies the two section tray counts, distillate flow, and operating reflux ratio.</p>
+
+          <h3>Why the inlet is editable</h3>
+          <p>The inlet uses <var>C</var> + 2 specifications. Choose a total flow, <var>C</var> − 1 independent mole fractions, and two thermal-state properties, such as temperature and pressure. Editing those given values defines a new feed case with the same number of column design choices. The lab fixes a 100 mol basis, treats the relative volatilities as inputs, and lets you specify feed quality <var>q</var> directly. A flash calculation can estimate the liquid fraction of a partially vaporized feed from its composition, temperature, and pressure.</p>
+          <ul>
+            <li><strong>Composition.</strong> With four components, three feed mole fractions are independent. The fourth equals 100% minus their sum. The lab fills in the final fraction to keep the total at 100%. At fixed recoveries, a different feed composition changes the product flows and compositions and can change minimum reflux.</li>
+            <li><strong>Feed quality.</strong> Changing <var>q</var> changes the right-hand side 1 − <var>q</var> of Underwood’s feed equation. It can therefore change the minimum reflux and the operating stage estimate. With key recoveries and relative volatilities held fixed, Fenske’s minimum stages stay the same.</li>
+          </ul>
+          <a href="index.html#column-form">Back to the inlet and design inputs</a>
         </section>
       </article>
     </div>

@@ -7,42 +7,62 @@ const startWalkthrough = $('start-walkthrough');
 const walkthroughNext = $('walkthrough-next');
 const walkthroughBack = $('walkthrough-back');
 const walkthroughStatus = $('walkthrough-status');
+const walkthroughEdit = $('walkthrough-edit');
 const walkthroughBar = $('walkthrough-bar');
 const walkthroughKey = 'distillation-lab:first-design-walkthrough';
+
+function checkWorkingPoint() {
+  return currentResult?.point ? '' : $('input-error').textContent || 'Enter valid feed and design inputs to calculate a working point.';
+}
+
 const walkthroughSteps = [
   {
-    element: $('component-picker'),
+    element: $('mixture-picker-step'),
     title: 'Build the feed',
-    instruction: 'Add at least two hydrocarbons with the search box, such as n-hexane and n-heptane.',
-    reason: 'The feed defines the case. Start here so you know which components are available to separate.',
+    instruction: 'Load the four-component course example, or search for and add at least two hydrocarbons.',
+    reason: 'To estimate trays and reflux, start with what enters the column. The feed composition tells you what is available to separate.',
     check() {
       const count = feedAndKeyInputs().componentInputs.length;
       return count < 2 ? `${count} of 2 components added` : '';
     },
   },
   {
-    element: $('key-pair-field'),
-    title: 'Choose the keys',
-    instruction: 'Confirm the light and heavy key pair to define the separation.',
-    reason: 'The pair identifies which component should go mostly overhead and which should go mostly to the bottoms. Their recoveries set the target.',
-    check: () => $('key-pair').value === '' ? 'Select a key pair to continue.' : '',
+    element: $('feed-conditions'),
+    title: 'Check the keys and feed state',
+    instruction: 'Choose the light and heavy keys and check q. A value of 0.50 means half the feed is liquid by moles.',
+    reason: 'The more volatile light key goes mostly to the top product. The heavy key goes mostly to the bottoms. Underwood uses q to account for the vapor entering with the feed.',
+    check() {
+      if (!$('key-pair').value) return 'Select a key pair.';
+      return $('quality-value').validity.valid ? '' : 'Enter a feed liquid fraction from 0 to 1 in 0.01 steps.';
+    },
   },
   {
-    element: $('multiple-value').closest('.control'),
-    title: 'Set operating reflux',
-    instruction: 'Keep the starting reflux multiplier or adjust it to choose a working point above minimum reflux.',
-    reason: 'Underwood gives the minimum reflux for that feed and separation. Choose more so a finite number of stages can achieve it.',
+    element: $('recovery-controls'),
+    title: 'Set both recovery targets',
+    instruction: 'Keep or adjust the two recoveries. A light-key recovery of 0.95 sends 95% of the incoming light key overhead.',
+    reason: 'Recoveries specify where each key goes. The material balance uses them to find the product compositions needed to calculate the limits.',
+    check: () => recoveryKeys.some((key) => !$(`${key}-value`).validity.valid)
+      ? 'Enter both recoveries from 0.51 to 0.99 in 0.01 steps.' : '',
+  },
+  {
+    element: $('operating-controls'),
+    title: 'Choose reflux and a feed tray',
+    instruction: 'Try 1.50 times minimum reflux and start with the feed near the middle at 0.50.',
+    reason: 'Underwood’s minimum is the pinch limit. Use more reflux to reach the target in a finite number of stages. The feed location divides the trays above and below the inlet.',
+    editSetup: true,
     check() {
-      if (currentResult?.point) return '';
-      return $('input-error').textContent || 'Complete the feed and recovery inputs to calculate a working point.';
+      if (!$('multiple-value').validity.valid) return 'Enter a reflux multiplier from 1.05 to 5 in 0.01 steps.';
+      if (!$('feedPosition-value').validity.valid) return 'Enter a feed position from 0 to 1 in 0.01 steps.';
+      return checkWorkingPoint();
     },
   },
   {
     element: $('operating-readout'),
     title: 'Find the stage estimate',
-    instruction: 'Read the estimated number of stages for your selected reflux.',
-    reason: 'Gilliland needs your chosen reflux plus the Fenske and Underwood limits to estimate the number of equilibrium stages.',
-    check: () => currentResult?.point ? '' : 'A working point is needed to calculate the stage estimate.',
+    instruction: 'Read the stage estimate and its rounded count. The whole stages include one equilibrium reboiler.',
+    reason: 'Fenske gives the fewest stages at total reflux, when no product leaves. Underwood gives the least reflux, where the stages needed grow without bound. Gilliland uses both limits and your reflux to estimate the stage count.',
+    editSetup: true,
+    check: checkWorkingPoint,
   },
 ];
 walkthroughBar.max = walkthroughSteps.length;
@@ -82,21 +102,30 @@ function positionWalkthrough() {
   const gap = 14;
 
   if (activeStep === 0) {
-    target.style.setProperty('--walkthrough-results-height', `${clampTo(height - 255, 48, 138)}px`);
+    target.style.setProperty('--walkthrough-results-height', `${clampTo(height - 315, 48, 138)}px`);
   }
 
   walkthroughCard.style.width = `${Math.min(320, width - gap * 2)}px`;
-  walkthroughCard.style.maxHeight = '';
+  const maxHeight = Math.max(0, height - gap * 2);
+  walkthroughCard.style.maxHeight = `${maxHeight}px`;
   const cardWidth = walkthroughCard.offsetWidth;
   const cardHeight = walkthroughCard.offsetHeight;
   let rect = target.getBoundingClientRect();
   const roomRight = rightEdge - rect.right - gap * 2;
   const roomLeft = rect.left - leftEdge - gap * 2;
+  const needsStack = roomRight < cardWidth && roomLeft < cardWidth;
+  const compact = needsStack && height < (activeStep === 0 ? 250 : 340);
+  target.classList.toggle('walkthrough-target-scroll', compact);
+  if (compact) {
+    const messageSpace = Math.min(cardHeight, 125);
+    target.style.setProperty('--walkthrough-target-height', `${Math.max(52, height - messageSpace - gap * 3)}px`);
+  }
+  rect = target.getBoundingClientRect();
   let left = clampTo(rect.left + (rect.width - cardWidth) / 2, leftEdge + gap, rightEdge - cardWidth - gap);
   let top;
   let placement;
 
-  if (roomRight >= cardWidth || roomLeft >= cardWidth) {
+  if (!needsStack) {
     placement = roomRight >= cardWidth ? 'right' : 'left';
     left = placement === 'right' ? rect.right + gap : rect.left - cardWidth - gap;
     top = clampTo(rect.top + (rect.height - cardHeight) / 2, topEdge + gap, bottomEdge - cardHeight - gap);
@@ -116,7 +145,7 @@ function positionWalkthrough() {
     }
     const below = roomBelow >= cardHeight || roomBelow >= roomAbove;
     placement = below ? 'below' : 'above';
-    const available = Math.max(52, below ? roomBelow : roomAbove);
+    const available = clampTo(below ? roomBelow : roomAbove, Math.min(52, maxHeight), maxHeight);
     walkthroughCard.style.maxHeight = `${available}px`;
     top = below ? rect.bottom + gap : rect.top - walkthroughCard.offsetHeight - gap;
     top = clampTo(top, topEdge + gap, bottomEdge - walkthroughCard.offsetHeight - gap);
@@ -140,6 +169,7 @@ function positionWalkthrough() {
   const pointer = side ? rect.top + rect.height / 2 - top : rect.left + rect.width / 2 - left;
   const edgeLength = side ? walkthroughCard.offsetHeight : cardWidth;
   walkthroughCard.style.setProperty('--spotlight-pointer', `${clampTo(pointer, 15, edgeLength - 15)}px`);
+  walkthroughBody.tabIndex = walkthroughBody.scrollHeight > walkthroughBody.clientHeight + 1 ? 0 : -1;
 }
 
 function scheduleWalkthroughLayout() {
@@ -163,6 +193,7 @@ function refreshWalkthrough() {
   walkthroughStatus.hidden = !message;
   if (walkthroughStatus.textContent !== message) walkthroughStatus.textContent = message;
   walkthroughNext.disabled = Boolean(message);
+  walkthroughEdit.hidden = !(step.editSetup && message && !currentResult?.point);
   scheduleWalkthroughLayout();
 }
 
@@ -170,8 +201,9 @@ function releaseWalkthroughTarget() {
   if (activeStep < 0) return;
   const { element } = walkthroughSteps[activeStep];
   walkthroughResize.unobserve(element);
-  element.classList.remove('walkthrough-target');
+  element.classList.remove('walkthrough-target', 'walkthrough-target-scroll');
   element.style.removeProperty('--walkthrough-results-height');
+  element.style.removeProperty('--walkthrough-target-height');
 }
 
 function showWalkthroughStep(index) {
@@ -203,19 +235,25 @@ function openWalkthrough() {
   showWalkthroughStep(0);
 }
 
-function closeWalkthrough(outcome) {
+function closeWalkthrough(outcome, focus = outcome === 'completed' ? $('operating-readout') : startWalkthrough) {
   if (activeStep < 0) return;
   releaseWalkthroughTarget();
   activeStep = -1;
   designWalkthrough.hidden = true;
   document.body.classList.remove('walkthrough-open');
   rememberWalkthrough(outcome);
-  const focus = outcome === 'completed' ? $('operating-readout') : startWalkthrough;
   focus.focus({ preventScroll: outcome === 'completed' });
 }
 
 startWalkthrough.addEventListener('click', openWalkthrough);
 $('walkthrough-skip').addEventListener('click', () => closeWalkthrough('skipped'));
+walkthroughEdit.addEventListener('click', () => {
+  const form = $('column-form');
+  const invalid = form.querySelector('[aria-invalid="true"]:not([readonly])');
+  const feed = form.querySelector('.feed-moles:not([readonly])');
+  const input = invalid || (form.querySelector('.feed-moles[aria-invalid="true"]') && feed) || $('lightRecovery-value');
+  closeWalkthrough('editing', input);
+});
 walkthroughBack.addEventListener('click', () => {
   if (activeStep > 0) showWalkthroughStep(activeStep - 1);
 });
@@ -232,13 +270,13 @@ document.addEventListener('keydown', (event) => {
   if (activeStep < 0) return;
   const target = walkthroughSteps[activeStep].element;
   if (event.key === 'Escape') {
-    // The picker handles Escape when its search or custom-entry panel is open.
+    // Close the open help or search before closing the tour.
     const pickerOpen = !($('component-results').hidden && $('custom-component').hidden);
-    if (activeStep === 0 && pickerOpen && target.contains(event.target)) return;
+    if (document.querySelector(':popover-open') || (activeStep === 0 && pickerOpen && target.contains(event.target))) return;
     event.preventDefault();
     closeWalkthrough('skipped');
   } else if (event.key === 'Tab') {
-    const focusable = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]';
+    const focusable = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]';
     const controls = [...target.querySelectorAll(focusable), ...walkthroughCard.querySelectorAll(focusable)]
       .filter((element) => element.tabIndex >= 0 && element.getClientRects().length);
     const index = controls.indexOf(document.activeElement);
@@ -246,7 +284,17 @@ document.addEventListener('keydown', (event) => {
     const next = index < 0 && event.shiftKey ? controls.length - 1
       : (index + offset + controls.length) % controls.length;
     event.preventDefault();
-    controls[next]?.focus({ preventScroll: true });
+    const control = controls[next];
+    control?.focus({ preventScroll: true });
+    const scrollRegions = '.component-results, .walkthrough-body, .walkthrough-target-scroll';
+    let scroller = control?.parentElement.closest(scrollRegions);
+    while (scroller) {
+      const box = scroller.getBoundingClientRect();
+      const rect = control.getBoundingClientRect();
+      if (rect.top < box.top) scroller.scrollBy({ top: rect.top - box.top });
+      if (rect.bottom > box.bottom) scroller.scrollBy({ top: rect.bottom - box.bottom });
+      scroller = scroller.parentElement.closest(scrollRegions);
+    }
   }
 }, true);
 
