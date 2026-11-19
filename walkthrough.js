@@ -2,6 +2,7 @@
 
 const designWalkthrough = $('design-walkthrough');
 const walkthroughCard = designWalkthrough.querySelector('.walkthrough-card');
+const walkthroughBody = walkthroughCard.querySelector('.walkthrough-body');
 const startWalkthrough = $('start-walkthrough');
 const walkthroughNext = $('walkthrough-next');
 const walkthroughBack = $('walkthrough-back');
@@ -13,6 +14,7 @@ const walkthroughSteps = [
     element: $('component-picker'),
     title: 'Build the feed',
     instruction: 'Add at least two hydrocarbons with the search box, such as n-hexane and n-heptane.',
+    reason: 'The feed defines the case. Start here so you know which components are available to separate.',
     check() {
       const count = feedAndKeyInputs().componentInputs.length;
       return count < 2 ? `${count} of 2 components added` : '';
@@ -22,12 +24,14 @@ const walkthroughSteps = [
     element: $('key-pair-field'),
     title: 'Choose the keys',
     instruction: 'Confirm the light and heavy key pair to define the separation.',
+    reason: 'The pair identifies which component should go mostly overhead and which should go mostly to the bottoms. Their recoveries set the target.',
     check: () => $('key-pair').value === '' ? 'Select a key pair to continue.' : '',
   },
   {
     element: $('multiple-value').closest('.control'),
     title: 'Set operating reflux',
     instruction: 'Keep the starting reflux multiplier or adjust it to choose a working point above minimum reflux.',
+    reason: 'Underwood gives the minimum reflux for that feed and separation. Choose more so a finite number of stages can achieve it.',
     check() {
       if (currentResult?.point) return '';
       return $('input-error').textContent || 'Complete the feed and recovery inputs to calculate a working point.';
@@ -37,6 +41,7 @@ const walkthroughSteps = [
     element: $('operating-readout'),
     title: 'Find the stage estimate',
     instruction: 'Read the estimated number of stages for your selected reflux.',
+    reason: 'Gilliland needs your chosen reflux plus the Fenske and Underwood limits to estimate the number of equilibrium stages.',
     check: () => currentResult?.point ? '' : 'A working point is needed to calculate the stage estimate.',
   },
 ];
@@ -179,6 +184,8 @@ function showWalkthroughStep(index) {
   walkthroughBar.value = index + 1;
   $('walkthrough-title').textContent = step.title;
   $('walkthrough-instruction').textContent = step.instruction;
+  $('walkthrough-reason').textContent = step.reason;
+  walkthroughBody.scrollTop = 0;
   walkthroughBack.hidden = index === 0;
   walkthroughNext.textContent = index === walkthroughSteps.length - 1 ? 'Finish' : 'Next';
   step.element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
@@ -244,7 +251,7 @@ document.addEventListener('keydown', (event) => {
 }, true);
 
 function offerWalkthroughOnEntry() {
-  if (location.hash === '#setup' && !alreadyOfferedWalkthrough() && !currentResult?.point) {
+  if ((!location.hash || location.hash === '#setup') && !alreadyOfferedWalkthrough() && !currentResult?.point) {
     openWalkthrough();
   }
 }

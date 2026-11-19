@@ -580,6 +580,7 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: v
 .walkthrough-progress-bar::-webkit-progress-value { background: #168674; border-radius: 5px; }
 .walkthrough-progress-bar::-moz-progress-bar { background: #168674; border-radius: 5px; }
 #walkthrough-instruction { margin-top: 8px; font-size: 14px; font-weight: 650; line-height: 1.45; }
+.walkthrough-why { margin-top: 6px; color: #36564f; font-size: 13px; line-height: 1.4; }
 .walkthrough-status { margin-top: 4px; color: #46645e; font-size: 12px; line-height: 1.4; }
 .walkthrough-actions, .walkthrough-navigation { display: flex; align-items: center; gap: 6px; }
 .walkthrough-actions { flex-shrink: 0; justify-content: space-between; padding: 4px 12px 10px; }

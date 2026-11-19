@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=limit-visuals">
+  <link rel="stylesheet" href="styles.css?v=walkthrough-reasons">
   <script src="mixture.js?v=empty-mixture" defer></script>
   <script src="app.js?v=limit-visuals" defer></script>
   <script src="lessons.js?v=limit-visuals" defer></script>
-  <script src="walkthrough.js?v=limit-visuals" defer></script>
+  <script src="walkthrough.js?v=walkthrough-reasons" defer></script>
 </head>
 <body>
   <header class="topbar" id="top">
@@ -357,12 +357,13 @@
     <div class="walkthrough-shade shade-bottom" aria-hidden="true"></div>
     <div class="walkthrough-spotlight" aria-hidden="true"></div>
     <section class="walkthrough-card" role="dialog" aria-labelledby="walkthrough-title"
-      aria-describedby="walkthrough-instruction" tabindex="-1">
+      aria-describedby="walkthrough-progress walkthrough-instruction walkthrough-why" tabindex="-1">
       <div class="walkthrough-body">
         <p class="walkthrough-progress" id="walkthrough-progress"></p>
         <progress class="walkthrough-progress-bar" id="walkthrough-bar" aria-hidden="true"></progress>
         <h2 class="sr-only" id="walkthrough-title"></h2>
         <p id="walkthrough-instruction"></p>
+        <p class="walkthrough-why" id="walkthrough-why"><strong>Why now?</strong> <span id="walkthrough-reason"></span></p>
         <p class="walkthrough-status" id="walkthrough-status" role="status" hidden></p>
       </div>
       <div class="walkthrough-actions">
