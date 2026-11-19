@@ -6,6 +6,7 @@ const startWalkthrough = $('start-walkthrough');
 const walkthroughNext = $('walkthrough-next');
 const walkthroughBack = $('walkthrough-back');
 const walkthroughStatus = $('walkthrough-status');
+const walkthroughBar = $('walkthrough-bar');
 const walkthroughKey = 'distillation-lab:first-design-walkthrough';
 const walkthroughSteps = [
   {
@@ -39,6 +40,7 @@ const walkthroughSteps = [
     check: () => currentResult?.point ? '' : 'A working point is needed to calculate the stage estimate.',
   },
 ];
+walkthroughBar.max = walkthroughSteps.length;
 
 let seenWalkthrough = false;
 let activeStep = -1;
@@ -72,7 +74,7 @@ function positionWalkthrough() {
   const height = walkthroughViewport?.height ?? window.innerHeight;
   const rightEdge = leftEdge + width;
   const bottomEdge = topEdge + height;
-  const gap = 10;
+  const gap = 14;
 
   if (activeStep === 0) {
     target.style.setProperty('--walkthrough-results-height', `${clampTo(height - 255, 48, 138)}px`);
@@ -85,12 +87,14 @@ function positionWalkthrough() {
   let rect = target.getBoundingClientRect();
   const roomRight = rightEdge - rect.right - gap * 2;
   const roomLeft = rect.left - leftEdge - gap * 2;
-  let left = clampTo(rect.left, leftEdge + gap, rightEdge - cardWidth - gap);
+  let left = clampTo(rect.left + (rect.width - cardWidth) / 2, leftEdge + gap, rightEdge - cardWidth - gap);
   let top;
+  let placement;
 
   if (roomRight >= cardWidth || roomLeft >= cardWidth) {
-    left = roomRight >= cardWidth ? rect.right + gap : rect.left - cardWidth - gap;
-    top = clampTo(rect.top, topEdge + gap, bottomEdge - cardHeight - gap);
+    placement = roomRight >= cardWidth ? 'right' : 'left';
+    left = placement === 'right' ? rect.right + gap : rect.left - cardWidth - gap;
+    top = clampTo(rect.top + (rect.height - cardHeight) / 2, topEdge + gap, bottomEdge - cardHeight - gap);
   } else {
     let roomBelow = bottomEdge - rect.bottom - gap * 2;
     let roomAbove = rect.top - topEdge - gap * 2;
@@ -106,6 +110,7 @@ function positionWalkthrough() {
       }
     }
     const below = roomBelow >= cardHeight || roomBelow >= roomAbove;
+    placement = below ? 'below' : 'above';
     const available = Math.max(52, below ? roomBelow : roomAbove);
     walkthroughCard.style.maxHeight = `${available}px`;
     top = below ? rect.bottom + gap : rect.top - walkthroughCard.offsetHeight - gap;
@@ -125,6 +130,11 @@ function positionWalkthrough() {
   }
   walkthroughCard.style.left = `${left}px`;
   walkthroughCard.style.top = `${top}px`;
+  walkthroughCard.dataset.placement = placement;
+  const side = placement === 'left' || placement === 'right';
+  const pointer = side ? rect.top + rect.height / 2 - top : rect.left + rect.width / 2 - left;
+  const edgeLength = side ? walkthroughCard.offsetHeight : cardWidth;
+  walkthroughCard.style.setProperty('--spotlight-pointer', `${clampTo(pointer, 15, edgeLength - 15)}px`);
 }
 
 function scheduleWalkthroughLayout() {
@@ -166,6 +176,7 @@ function showWalkthroughStep(index) {
   step.element.classList.add('walkthrough-target');
   walkthroughResize.observe(step.element);
   $('walkthrough-progress').textContent = `Step ${index + 1} of ${walkthroughSteps.length}`;
+  walkthroughBar.value = index + 1;
   $('walkthrough-title').textContent = step.title;
   $('walkthrough-instruction').textContent = step.instruction;
   walkthroughBack.hidden = index === 0;

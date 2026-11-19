@@ -196,6 +196,24 @@ function updateFenskeLesson(result) {
   showStage();
 }
 
+const condenserMode = $('condenser-mode');
+
+function updateCondenserProof() {
+  const total = condenserMode.value === 'total';
+  const reflux = currentResult?.point?.reflux ?? 1.5;
+  const product = total ? 0 : 100 / (reflux + 1);
+  const returned = 100 - product;
+  const diagram = $('condensate-diagram');
+  diagram.dataset.total = String(total);
+  diagram.style.setProperty('--reflux-share', `${returned}%`);
+  $('condensate-reflux').textContent = `${fixed(returned)} mol`;
+  $('condensate-product').textContent = `${fixed(product)} mol`;
+  $('condenser-proof-result').textContent = total
+    ? 'At total reflux, all condensate returns and no distillate leaves.'
+    : `At R = ${formatEstimate(reflux)}, ${fixed(product)} mol leave as distillate.`;
+}
+condenserMode.addEventListener('change', updateCondenserProof);
+
 const pinchAlpha = 2.5;
 const pinchFeed = 0.5;
 const pinchDistillate = 0.95;
@@ -223,7 +241,7 @@ function buildPinchExample() {
   pinchSegments = steps.length - 1;
   pinchHold = 0;
   $('pinch-caption').textContent = atMinimum
-    ? `At R = ${fixed(reflux)}, the lines meet at the feed composition. The steps shrink toward that pinch.`
+    ? `At R = ${fixed(reflux)}, the gap closes at the feed. The steps shrink toward that pinch, so any finite number of stages falls short.`
     : `At R = ${fixed(reflux)}, the lines separate at the feed. The steps can reach the feed region in a finite number of contacts.`;
 }
 
@@ -238,6 +256,12 @@ function drawPinchLesson() {
   const xAt = (x) => left + (right - left) * (x - 0.4) / 0.6;
   const yAt = (y) => bottom - (bottom - top) * (y - 0.6) / 0.4;
   const plot = ([x, y]) => [xAt(x), yAt(y)];
+  const operatingAtFeed = operating(pinchFeed);
+  const feedGap = atMinimum ? 0 : pinchVapor - operatingAtFeed;
+  const liquid = steps[pinchSegments][0];
+  $('pinch-gap').textContent = feedGap.toFixed(4);
+  $('pinch-contact').textContent = `Liquid x after contact ${Math.ceil(pinchSegments / 2)}`;
+  $('pinch-liquid').textContent = `${liquid.toFixed(4)} ${liquid > pinchFeed ? '>' : '≤'} feed x`;
 
   ctx.fillStyle = colors.label;
   ctx.font = '10px monospace';
@@ -273,11 +297,17 @@ function drawPinchLesson() {
   drawLine(ctx, [plot([0.4, operating(0.4)]), plot([pinchDistillate, pinchDistillate])], colors.label, 1.5, [5, 3]);
   drawLine(ctx, steps.slice(0, pinchSegments + 1).map(plot), colors.amber, 1.6);
   drawDot(ctx, ...plot(steps[pinchSegments]), 3, colors.amber);
-  if (atMinimum) drawDot(ctx, ...plot([pinchFeed, pinchVapor]), 4, colors.violet);
+  if (atMinimum) {
+    drawDot(ctx, ...plot([pinchFeed, pinchVapor]), 4, colors.violet);
+  } else {
+    drawLine(ctx, [plot([pinchFeed, operatingAtFeed]), plot([pinchFeed, pinchVapor])], colors.teal, 2.5);
+    drawDot(ctx, ...plot([pinchFeed, operatingAtFeed]), 3, colors.teal);
+    drawDot(ctx, ...plot([pinchFeed, pinchVapor]), 3, colors.teal);
+  }
   ctx.restore();
 
   ctx.fillStyle = colors.label;
-  ctx.fillText(atMinimum ? 'Pinch' : 'Feed', xAt(pinchFeed) + 6, yAt(pinchVapor) + 16);
+  ctx.fillText(atMinimum ? 'Zero gap' : 'Open gap', xAt(pinchFeed) + 7, yAt(operatingAtFeed) + 15);
   canvas.setAttribute('aria-label', atMinimum
     ? 'At minimum reflux, equilibrium and operating lines meet at a liquid fraction of 0.50. The tray steps shrink toward the pinch.'
     : 'At 1.5 times minimum reflux, the two lines are separated at the feed and the tray steps cross the feed composition.');
@@ -331,6 +361,7 @@ sweep.addEventListener('input', () => {
 function updateLessonReadouts() {
   const result = currentResult;
   updateFenskeLesson(result);
+  updateCondenserProof();
   const root = result?.root;
   const input = $('multiple-value');
   const ready = Boolean(result?.rMin);

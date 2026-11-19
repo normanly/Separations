@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=walkthrough">
+  <link rel="stylesheet" href="styles.css?v=limit-visuals">
   <script src="mixture.js?v=empty-mixture" defer></script>
-  <script src="app.js?v=empty-mixture" defer></script>
-  <script src="lessons.js?v=component-picker" defer></script>
-  <script src="walkthrough.js?v=walkthrough" defer></script>
+  <script src="app.js?v=limit-visuals" defer></script>
+  <script src="lessons.js?v=limit-visuals" defer></script>
+  <script src="walkthrough.js?v=limit-visuals" defer></script>
 </head>
 <body>
   <header class="topbar" id="top">
@@ -178,6 +178,32 @@
           <p>With zero product withdrawal, the total-reflux balance matches the compositions of vapor and liquid passing each other between stages. That passes one stage’s enrichment to the next. After <var>N</var> contacts, the ratio has been multiplied by (α<sub>LK</sub>/α<sub>HK</sub>)<sup>N</sup>. Take logs to recover <var>N</var>. Withdrawing enriched product reduces the separation each contact can pass along. That is why this total-reflux calculation gives a lower bound for the stage count.</p>
           <p id="fenske-work" class="equation"></p>
         </details>
+        <figure class="demo-panel condenser-proof" aria-labelledby="condenser-proof-title">
+          <h3 id="condenser-proof-title">Follow 100 mol into the reflux drum</h3>
+          <div class="pinch-options option-with-help" data-option-help="condenserMode">
+            <label for="condenser-mode" class="sr-only">Condenser split example</label>
+            <select id="condenser-mode">
+              <option value="total">Total reflux · Fenske limit</option>
+              <option value="finite">Finite reflux</option>
+            </select>
+          </div>
+          <div class="condensate-diagram" id="condensate-diagram">
+            <div class="condensate-inlet">From the condenser <strong>100 mol</strong></div>
+            <div class="condensate-drum">
+              Reflux drum
+              <div class="condensate-split" aria-hidden="true"><i></i></div>
+            </div>
+            <div class="condensate-pipes" aria-hidden="true"><i></i><i></i></div>
+            <dl class="condensate-outlets">
+              <div><dt>Returns as reflux</dt><dd id="condensate-reflux">100.00 mol</dd></div>
+              <div><dt>Leaves as distillate</dt><dd id="condensate-product">0.00 mol</dd></div>
+            </dl>
+          </div>
+          <figcaption>
+            The condenser turns 100 mol of overhead vapor into liquid. The drum splits it between reflux and distillate, so <var>V</var> = <var>L</var> + <var>D</var>. With <var>R</var> = <var>L</var>/<var>D</var>, the distillate is <var>D</var> = 100/(<var>R</var> + 1).
+            <strong id="condenser-proof-result"></strong>
+          </figcaption>
+        </figure>
         <div class="lesson-links">
           <a class="text-link" href="#equipment" data-equipment-case="total">See why product flow stops ↑</a>
           <a class="text-link" href="#underwood">Continue to minimum reflux ↓</a>
@@ -240,6 +266,10 @@
           <span><i class="legend-line pinch-operating"></i>Operating line</span>
           <span><i class="legend-line gilliland-line"></i>Trays</span>
         </div>
+        <dl class="pinch-measures">
+          <div><dt>Gap between lines at feed x = 0.5000</dt><dd id="pinch-gap">—</dd></div>
+          <div><dt id="pinch-contact">Liquid x at current contact</dt><dd id="pinch-liquid">—</dd></div>
+        </dl>
         <div class="demo-controls">
           <button class="quiet-button" id="pinch-play" type="button">Play tray steps</button>
         </div>
@@ -249,6 +279,7 @@
           <p>The feed is saturated liquid, so its balance is vertical at x = z<sub>F</sub> = 0.50. Equilibrium gives y* = 2.50x / [1 + (2.50 − 1)x] = 0.714 there.</p>
           <p>The rectifying line obeys y = (Rx + x<sub>D</sub>) / (R + 1). Make it pass through the pinch with x<sub>D</sub> = 0.95 and solve for R.</p>
           <p class="equation">R<sub>min</sub> = (0.95 − 0.714) / (0.714 − 0.50) ≈ 1.10</p>
+          <p>At this reflux, a step starting at x = 0.50 ends at x = 0.50. Both the operating line and the equilibrium curve increase with composition, so a step starting above 0.50 also ends above 0.50. Every finite sequence from the distillate stays above the feed composition.</p>
         </details>
       </figure>
     </section>
@@ -329,7 +360,8 @@
       aria-describedby="walkthrough-instruction" tabindex="-1">
       <div class="walkthrough-body">
         <p class="walkthrough-progress" id="walkthrough-progress"></p>
-        <h2 id="walkthrough-title"></h2>
+        <progress class="walkthrough-progress-bar" id="walkthrough-bar" aria-hidden="true"></progress>
+        <h2 class="sr-only" id="walkthrough-title"></h2>
         <p id="walkthrough-instruction"></p>
         <p class="walkthrough-status" id="walkthrough-status" role="status" hidden></p>
       </div>
