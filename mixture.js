@@ -125,7 +125,9 @@ function renderMixture(message = '') {
   keySelect.value = String(keyIndex);
   $('key-pair-field').hidden = count < 2;
   $('mixture-inputs').hidden = count === 0;
-  $('clear-mixture').disabled = count === 0;
+  $('mixture-start').hidden = count >= 2;
+  $('load-course-mixture').hidden = count > 0;
+  $('clear-mixture').hidden = count === 0;
   $('component-status').textContent = message || `${count} component${count === 1 ? '' : 's'} selected`;
 
   const reference = referenceComponent()?.logVolatility ?? 0;
@@ -195,6 +197,14 @@ function setCourseMixture() {
     logVolatility: reference + Math.log(alpha),
   }));
   keyIndex = 1;
+  $('component-search').value = '';
+  renderMixture();
+}
+
+function clearMixture() {
+  selectedComponents = [];
+  keyIndex = 0;
+  $('component-search').value = '';
   renderMixture();
 }
 
@@ -338,10 +348,7 @@ function initMixturePicker() {
   });
 
   $('clear-mixture').addEventListener('click', () => {
-    selectedComponents = [];
-    keyIndex = 0;
-    search.value = '';
-    renderMixture();
+    clearMixture();
     search.focus();
   });
   $('sort-mixture').addEventListener('click', () => {

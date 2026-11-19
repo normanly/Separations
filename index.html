@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
   <link rel="stylesheet" href="styles.css?v=component-picker">
-  <script src="mixture.js?v=component-picker" defer></script>
-  <script src="app.js?v=component-picker" defer></script>
+  <script src="mixture.js?v=empty-mixture" defer></script>
+  <script src="app.js?v=empty-mixture" defer></script>
   <script src="lessons.js?v=component-picker" defer></script>
 </head>
 <body>
@@ -113,12 +113,13 @@
             </div>
           </div>
           <div class="mixture-summary">
-            <p id="component-status" role="status">4 components selected</p>
+            <p id="component-status" role="status">0 components selected</p>
+            <button class="quiet-button" id="load-course-mixture" type="button">Load course example</button>
             <button class="quiet-button" id="sort-mixture" type="button" hidden>Sort by volatility</button>
-            <button class="quiet-button" id="clear-mixture" type="button">Clear mixture</button>
+            <button class="quiet-button" id="clear-mixture" type="button" hidden>Clear mixture</button>
           </div>
-          <p class="input-caption">Pick a search result to add it. Clear the mixture to start from scratch.</p>
-          <div id="mixture-inputs">
+          <p class="input-caption" id="mixture-start">Search by name or formula and add at least two hydrocarbons.</p>
+          <div id="mixture-inputs" hidden>
             <div class="key-pair-field" id="key-pair-field">
               <span class="option-with-help" data-option-help="keyPair"><label for="key-pair">Light / heavy key pair</label></span>
               <select id="key-pair"></select>
@@ -156,7 +157,7 @@
       <div class="products-intro">
         <h2 id="products-title">Follow 100 mol of feed</h2>
         <p>Recovery answers “where does this component go?” Product composition answers “what fraction of this stream is that component?”</p>
-        <p id="product-example" class="equation">Set the feed composition and key recoveries to calculate the split.</p>
+        <p id="product-example" class="equation">Add at least two hydrocarbons to calculate the product split.</p>
       </div>
       <div class="product-streams" id="product-streams"></div>
     </section>

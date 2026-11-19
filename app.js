@@ -173,9 +173,7 @@ function setControlValue(key, value) {
 
 function resolveStreams(values) {
   const { componentInputs, keys } = feedAndKeyInputs();
-  if (componentInputs.length < 2) {
-    return { error: 'Add at least two hydrocarbons to calculate a separation.' };
-  }
+  if (componentInputs.length < 2) return null;
   const names = componentInputs.map(({ name }) => name);
   const feed = componentInputs.map(({ feed: input }) => input.valueAsNumber / 100);
   const alpha = componentInputs.map(({ alpha: input }) => input.valueAsNumber);
@@ -215,7 +213,9 @@ function updateProductStreams(result) {
     const overhead = rate * result.distillate[light];
     $('product-example').textContent = `${fixed(100 * inlet)} mol ${names[light]} × ${(100 * overhead / inlet).toFixed(0)}% recovery = ${fixed(100 * overhead)} mol overhead. Divide by ${fixed(100 * rate)} mol of distillate to get ${fixed(100 * result.distillate[light])} mol%.`;
   } else {
-    $('product-example').textContent = 'Set the feed composition and both key recoveries to calculate the split.';
+    $('product-example').textContent = names.length < 2
+      ? 'Add at least two hydrocarbons to calculate the product split.'
+      : 'Set the feed composition and both key recoveries to calculate the split.';
   }
   const formatPercent = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 2 });
   for (const { key, keyIndex, stream } of productStreams) {
@@ -576,7 +576,7 @@ function drawEquipment() {
   };
   const pipe = (points, color, arrow = false) => {
     drawLine(ctx, points, color, 1.8);
-    if (color !== quiet && (total || reflux)) flowRoutes.push({ points, color });
+    if (color !== quiet) flowRoutes.push({ points, color });
     if (!arrow) return;
     const [[beforeX, beforeY], [x, y]] = points.slice(-2);
     const angle = Math.atan2(y - beforeY, x - beforeX);
@@ -593,7 +593,7 @@ function drawEquipment() {
     ctx.stroke();
   };
 
-  const outletColor = reflux && !total ? product : quiet;
+  const outletColor = total ? quiet : product;
   pipe([[entry, feedY], [column - towerHalf, feedY]], outletColor === quiet ? quiet : liquid, true);
   pipe([[column, 75], [column, 49], [condenser - 14, 49]], vapor, true);
   pipe([[condenser + 14, 49], [drum, 49], [drum, 76]], liquid, true);
@@ -610,10 +610,8 @@ function drawEquipment() {
     drawLine(ctx, [[column - towerHalf + 7 + (tray % 2) * 7, y],
       [column + towerHalf - 7 - ((tray + 1) % 2) * 7, y]], trays && tray === feedMark ? product : wall, trays && tray === feedMark ? 2 : 1);
   }
-  if (total || reflux) {
-    pipe([[column - 8, 207], [column - 8, 91]], vapor, true);
-    pipe([[column + 8, 91], [column + 8, 207]], liquid, true);
-  }
+  pipe([[column - 8, 207], [column - 8, 91]], vapor, true);
+  pipe([[column + 8, 91], [column + 8, 207]], liquid, true);
   vessel(condenser - 14, 35, 28, 28, 14);
   vessel(drum - 25, 77, 50, 27, 13);
   vessel(boiler - 14, 224, 28, 28, 14);
@@ -639,7 +637,7 @@ function drawEquipment() {
       ? (result?.rMin ? 'A pinch stalls the separation at this reflux. The stream amounts show the limiting product split.' : 'Set valid column inputs with a positive minimum reflux to show the pinch case.')
       : reflux
         ? 'The reboiler sends vapor up the column. The condenser turns it into liquid, and the drum splits that liquid into reflux and distillate.'
-        : 'Enter valid recovery and reflux specifications to calculate the operating stream flows.';
+        : 'The animation shows flow directions. Set up a mixture and operating conditions to calculate stream amounts.';
   $('equipment-caption').textContent = caption;
   canvas.setAttribute('aria-label', `Tray column with rectifying and stripping sections, condenser, reflux drum and reboiler. Feed ${feed}, distillate ${distillate}, bottoms ${bottoms}, reflux ${returned}. ${caption}`);
 }
@@ -663,14 +661,23 @@ function drawCharts() {
   drawEquipment();
 }
 
-$('column-form').addEventListener('submit', (event) => event.preventDefault());
-$('column-form').addEventListener('reset', (event) => {
-  event.preventDefault();
+function resetControlValues() {
   for (const { number, range } of controls) {
     number.value = number.defaultValue;
     range.value = range.defaultValue;
   }
+}
+
+$('column-form').addEventListener('submit', (event) => event.preventDefault());
+$('column-form').addEventListener('reset', (event) => {
+  event.preventDefault();
+  resetControlValues();
+  clearMixture();
+});
+$('load-course-mixture').addEventListener('click', () => {
+  resetControlValues();
   setCourseMixture();
+  $('key-pair').focus();
 });
 document.querySelector('.chart-switch').addEventListener('change', drawCharts);
 $('open-notes').addEventListener('click', () => $('model-notes').showModal());
@@ -679,4 +686,4 @@ $('equipment-mode').addEventListener('change', drawEquipment);
 new ResizeObserver(drawEquipment).observe($('equipment-plot'));
 new ResizeObserver(() => drawUnderwoodRoot(currentResult)).observe($('root-plot'));
 initMixturePicker();
-setCourseMixture();
+renderMixture();
