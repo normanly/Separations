@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=component-picker">
+  <link rel="stylesheet" href="styles.css?v=walkthrough">
   <script src="mixture.js?v=empty-mixture" defer></script>
   <script src="app.js?v=empty-mixture" defer></script>
   <script src="lessons.js?v=component-picker" defer></script>
+  <script src="walkthrough.js?v=walkthrough" defer></script>
 </head>
 <body>
   <header class="topbar" id="top">
@@ -81,6 +82,7 @@
         </div>
         <div class="setup-actions">
           <p class="dof-readout"><output id="dof-remaining" aria-live="polite">4</output> of 4 choices remaining</p>
+          <button class="quiet-button" id="start-walkthrough" type="button">Start walkthrough</button>
           <button class="quiet-button reset" type="reset" form="column-form"><span aria-hidden="true">↻</span> Reset inputs</button>
         </div>
       </div>
@@ -270,7 +272,7 @@
       </div>
       <div class="gilliland-grid">
         <div class="gilliland-chart">
-          <div class="operating-point" id="operating-readout" aria-live="polite" aria-atomic="true">
+          <div class="operating-point" id="operating-readout" tabindex="-1" aria-live="polite" aria-atomic="true">
             <div class="active-stage"><span class="dot"></span><output id="operating-stages" for="multiple-value">—</output> <span>stages estimated</span></div>
             <div class="reflux-readout"><span>Reflux ratio</span><output id="operating-reflux" for="multiple-value">—</output></div>
             <div class="stage-readout"><span>Whole stages</span><output id="rounded-stages" for="multiple-value">—</output></div>
@@ -316,6 +318,30 @@
       <a href="#top">Back to top ↑</a>
     </footer>
   </main>
+
+  <div class="walkthrough" id="design-walkthrough" hidden>
+    <div class="walkthrough-shade shade-top" aria-hidden="true"></div>
+    <div class="walkthrough-shade shade-left" aria-hidden="true"></div>
+    <div class="walkthrough-shade shade-right" aria-hidden="true"></div>
+    <div class="walkthrough-shade shade-bottom" aria-hidden="true"></div>
+    <div class="walkthrough-spotlight" aria-hidden="true"></div>
+    <section class="walkthrough-card" role="dialog" aria-labelledby="walkthrough-title"
+      aria-describedby="walkthrough-instruction" tabindex="-1">
+      <div class="walkthrough-body">
+        <p class="walkthrough-progress" id="walkthrough-progress"></p>
+        <h2 id="walkthrough-title"></h2>
+        <p id="walkthrough-instruction"></p>
+        <p class="walkthrough-status" id="walkthrough-status" role="status" hidden></p>
+      </div>
+      <div class="walkthrough-actions">
+        <button class="walkthrough-skip" id="walkthrough-skip" type="button">Skip walkthrough</button>
+        <div class="walkthrough-navigation">
+          <button class="quiet-button" id="walkthrough-back" type="button" hidden>Back</button>
+          <button class="primary-button" id="walkthrough-next" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <dialog id="model-notes" aria-labelledby="notes-title">
     <div class="notes-header">
