@@ -176,12 +176,14 @@ select { max-width: 100%; background: var(--inset); color: var(--text); border: 
   }
 }
 
-.intro { display: grid; grid-template-columns: minmax(0, .76fr) minmax(0, 1.24fr); gap: clamp(22px, 5vw, 70px); align-items: start; padding: 30px 0 26px; }
+.intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(22px, 5vw, 70px); align-items: start; padding: 34px 0 26px; }
 .hero-copy { padding-block: 8px 0; min-width: 0; }
 .eyebrow { color: var(--accent, var(--teal)); font: 600 11px/1.45 var(--mono); letter-spacing: .105em; }
 h1 { margin: 8px 0 13px; font-size: clamp(44px, 5.7vw, 79px); line-height: .99; font-weight: 710; letter-spacing: -.063em; }
 h1 em { color: var(--teal); font-style: normal; }
-.hero-copy > p:not(.eyebrow) { max-width: 39ch; margin-bottom: 16px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.hero-copy > p:not(.eyebrow) { max-width: 42ch; margin-bottom: 13px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.intro-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
+.intro-actions .text-link { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; margin: 0; }
 .primer { display: grid; gap: 8px; margin-top: 20px; padding-top: 11px; border-top: 1px solid var(--edge); }
 .primer div { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .primer dt { color: var(--text); font-weight: 680; }
@@ -189,8 +191,11 @@ h1 em { color: var(--teal); font-style: normal; }
 
 .prediction { align-self: center; border-color: #497b74; background: linear-gradient(155deg, #203934, var(--panel) 54%); }
 .prediction h2 { font-size: clamp(22px, 3.2vw, 34px); }
-.prediction > p:not(.eyebrow), .prediction .input-caption { max-width: 58ch; margin-top: 7px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.prediction > p.prediction-terms { color: var(--subtle); font-size: 12px; }
+.lesson-route { display: grid; gap: 6px; margin: 10px 0 0; padding-inline-start: 22px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.lesson-route li::marker { color: var(--teal); font-weight: 650; }
+.prediction-context, .prediction-terms, .prediction .input-caption, .prediction-record { max-width: 58ch; margin-top: 7px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.prediction .prediction-terms { color: var(--subtle); font-size: 12px; }
+.prediction .input-caption { margin-block: 0 8px; color: var(--amber); }
 .prediction-choices { min-width: 0; padding: 0; margin: 15px 0 13px; border: 0; }
 .prediction-choices legend { padding: 0; font-size: 14px; font-weight: 650; }
 .prediction-choices div, .comparison-actions, .case-presets { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
@@ -202,6 +207,7 @@ h1 em { color: var(--teal); font-style: normal; }
 
 .panel { min-width: 0; border: 1px solid var(--edge); background: var(--panel); border-radius: 13px; padding: 21px; }
 .panel[id] { scroll-margin-top: 52px; }
+.intro .prediction[id] { scroll-margin-top: 12px; }
 .section-top { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .panel h2 { font-size: clamp(20px, 2.25vw, 31px); letter-spacing: -.041em; font-weight: 685; line-height: 1.12; }
 .panel .eyebrow { margin-bottom: 5px; }
@@ -770,9 +776,10 @@ dialog p { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 
 }
 @media (max-width: 570px) {
   .topbar-inner, .container { width: calc(100% - 24px); }
+  .page-tabs .tab-detail { display: none; }
   .intro { gap: 14px; padding-block: 14px 15px; }
   .hero-copy h1 { font-size: clamp(39px, 11vw, 54px); }
-  .hero-copy > p:not(.eyebrow) { margin-bottom: 3px; }
+  .hero-copy > p:not(.eyebrow) { margin-bottom: 10px; }
   .panel { padding: 12px; }
   .section-top { flex-wrap: wrap; gap: 7px; }
   .primer { gap: 8px; }

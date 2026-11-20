@@ -2,6 +2,10 @@
 
 const predictionForm = $('prediction-form');
 const predictionCheck = $('check-prediction');
+const startLesson = $('start-guided-lesson');
+const experimentLink = $('open-experiment');
+const resetExperiment = $('reset-experiment');
+const predictionTask = $('prediction-task');
 const comparisonPoint = $('compare-working-point');
 const comparisonPending = $('compare-working-pending');
 const equipmentMode = $('equipment-mode');
@@ -16,11 +20,20 @@ function isGuidedLesson() {
 
 function showLessonSection(id) {
   const section = $(id);
+  if (id === 'prediction') setPredictionOpen(true);
   location.hash = id;
   const heading = section.querySelector('h2');
   heading.tabIndex = -1;
   heading.focus({ preventScroll: true });
   section.scrollIntoView({ block: 'start' });
+}
+
+function setPredictionOpen(open) {
+  if (predictionTask.hidden === !open) return;
+  $('lesson-preview').hidden = open;
+  $('prediction-title').textContent = open ? 'Make a prediction' : 'Your first lesson';
+  predictionTask.hidden = !open;
+  updateIntroLesson();
 }
 
 function showEquipmentCase(mode) {
@@ -42,10 +55,21 @@ function updateIntroLesson() {
   const inspecting = isGuidedLesson();
   const result = currentResult;
   const point = result?.point;
-  const active = feedAndKeyInputs().componentInputs.length > 0;
+  const active = feedAndKeyInputs().componentInputs.length > 0
+    || controls.some(({ number }) => number.valueAsNumber !== Number(number.defaultValue));
+  const resumeFirst = active && predictionTask.hidden;
+  const firstAction = resumeFirst ? experimentLink : startLesson;
 
-  $('open-experiment-label').textContent = inspecting ? 'Return to the lesson setup' : active ? 'Resume my experiment' : 'Open the experiment';
-  $('prediction-replace').hidden = !active;
+  startLesson.hidden = !predictionTask.hidden;
+  startLesson.classList.toggle('primary-button', !resumeFirst);
+  startLesson.classList.toggle('text-link', resumeFirst);
+  experimentLink.classList.toggle('primary-button', resumeFirst);
+  experimentLink.classList.toggle('text-link', !resumeFirst);
+  if (firstAction.parentElement.firstElementChild !== firstAction) firstAction.parentElement.prepend(firstAction);
+  $('open-experiment-label').textContent = inspecting ? 'Return to the lesson setup' : active ? 'Resume my experiment' : 'Build a custom case';
+  if (!active && document.activeElement === resetExperiment) $('component-search').focus({ preventScroll: true });
+  resetExperiment.hidden = !active;
+  $('prediction-replace').hidden = !active || inspecting;
   $('preset-replace').hidden = !active;
   $('guided-case').hidden = !inspecting;
   $('column-form').hidden = inspecting;
@@ -92,6 +116,12 @@ function showRefluxPrecision(value) {
   return value >= 10000 || value < 0.0001 ? formatEstimate(value)
     : value.toLocaleString('en-US', { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 5 });
 }
+
+startLesson.addEventListener('click', (event) => {
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  showLessonSection('prediction');
+});
 
 predictionForm.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -140,7 +170,13 @@ $('compare-load-course').addEventListener('click', () => {
   showLessonSection('compare');
 });
 
-window.addEventListener('hashchange', () => {
+window.addEventListener('hashchange', (event) => {
+  if (location.hash === '#prediction' && predictionTask.hidden) showLessonSection('prediction');
+  const returnedToStart = !location.hash && new URL(event.oldURL).hash === '#prediction';
+  if ((returnedToStart || location.hash === '#top') && !predictionTask.hidden) {
+    setPredictionOpen(false);
+    document.querySelector('.intro-actions .primary-button').focus({ preventScroll: true });
+  }
   if (!isGuidedLesson()) return;
   if (location.hash === '#fenske') {
     lessonPhase = 'limits';
@@ -180,4 +216,5 @@ document.addEventListener('click', (event) => {
 equipmentMode.addEventListener('change', updateEquipmentLink);
 document.addEventListener('lab:results', updateIntroLesson);
 updateEquipmentLink();
-updateIntroLesson();
+if (location.hash === '#prediction') showLessonSection('prediction');
+else updateIntroLesson();
