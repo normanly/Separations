@@ -72,14 +72,18 @@ sub, sup { line-height: 0; }
   position: sticky;
   top: 0;
   z-index: 4;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  padding-block: 12px 9px;
+  padding-block: 4px;
   border-bottom: 1px solid var(--edge);
   background: var(--page);
 }
-.nav-links a { color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+.section-menu-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+.nav-links .section-menu-toggle { display: none; }
+.nav-links a { display: flex; min-height: 36px; align-items: center; padding: 6px 9px; border-radius: 6px; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+.nav-links a:hover { background: var(--panel); }
 .nav-links a:hover, .text-link:hover { color: var(--teal); text-decoration: underline; }
 
 .quiet-button, .primary-button {
@@ -186,6 +190,7 @@ h1 em { color: var(--teal); font-style: normal; }
 .prediction { align-self: center; border-color: #497b74; background: linear-gradient(155deg, #203934, var(--panel) 54%); }
 .prediction h2 { font-size: clamp(22px, 3.2vw, 34px); }
 .prediction > p:not(.eyebrow), .prediction .input-caption { max-width: 58ch; margin-top: 7px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.prediction > p.prediction-terms { color: var(--subtle); font-size: 12px; }
 .prediction-choices { min-width: 0; padding: 0; margin: 15px 0 13px; border: 0; }
 .prediction-choices legend { padding: 0; font-size: 14px; font-weight: 650; }
 .prediction-choices div, .comparison-actions, .case-presets { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
@@ -232,6 +237,12 @@ h1 em { color: var(--teal); font-style: normal; }
 .dof, .products, .lesson, .connection { margin-bottom: 18px; }
 .setup-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: end; gap: 7px 10px; flex-shrink: 0; }
 .dof .section-top .connection-caption { max-width: 78ch; }
+.setup-plan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 13px; }
+.setup-plan > div { padding: 9px 11px; border: 1px solid var(--edge); border-radius: 7px; background: var(--inset); }
+.setup-plan dt { color: var(--teal); font-size: 13px; font-weight: 650; }
+.setup-plan dd, .guided-case p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.guided-case { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; padding: 11px; border-left: 2px solid var(--teal); background: var(--inset); }
+.guided-case p { max-width: 75ch; }
 .dof-readout { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .dof-readout output { color: var(--teal); font: 600 19px var(--mono); margin-right: 3px; }
 .dof-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; margin-top: 15px; }
@@ -343,8 +354,8 @@ input[type="range"]::-webkit-slider-thumb { appearance: none; width: 15px; heigh
 input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: var(--teal); border: 2px solid #183e37; border-radius: 50%; }
 .control-endpoints { display: flex; justify-content: space-between; gap: 5px; color: var(--subtle); font: 10px/1.35 var(--mono); }
 .input-error { margin-top: 9px; color: var(--amber); font-size: 13px; line-height: 1.45; }
-.setup-footer { margin-top: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; color: var(--muted); font-size: 12px; }
-.setup-footer a, .text-link, .dof-proof a { color: var(--teal); font-size: 12px; text-underline-offset: 3px; }
+.setup-footer { margin-top: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; }
+.setup-footer a:not(.primary-button), .text-link, .dof-proof a { color: var(--teal); font-size: 12px; text-underline-offset: 3px; }
 
 .products { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 16px; }
 .products h2 { font-size: 22px; }
@@ -527,6 +538,7 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: v
 .proof-table tr.is-current th { color: var(--text); }
 
 .walkthrough-open { overflow: hidden; }
+.walkthrough-open .nav-links { position: static; }
 .walkthrough { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
 .walkthrough-shade {
   position: absolute;
@@ -719,8 +731,28 @@ dialog p { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 
   .topbar-inner, .container { width: calc(100% - 36px); }
   .intro { gap: 20px; }
   .panel { padding: 15px; }
-  .nav-links { gap: 6px 14px; }
   .setup-actions { flex-shrink: 1; }
+}
+@media (max-width: 880px) {
+  .section-menu-ready .section-menu-toggle { display: inline-flex; }
+  .section-menu-ready .section-menu-items { display: none; }
+  .section-menu-ready.section-menu-open .section-menu-items {
+    position: absolute;
+    inset: 100% 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: calc(100dvh - 56px);
+    overflow: auto;
+    padding: 6px;
+    gap: 2px;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    background: var(--panel);
+    box-shadow: 0 9px 22px #07111691;
+  }
+  .section-menu-open a { min-height: 40px; }
+  .section-menu-open a:hover { background: var(--inset); }
+  .section-menu-open .section-menu-toggle span { transform: rotate(180deg); }
 }
 @media (max-width: 790px) {
   .topbar-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding-block: 9px; }
@@ -746,8 +778,8 @@ dialog p { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 
   .primer { gap: 8px; }
   .primer div { font-size: 11px; }
   .dof-grid, .lesson { grid-template-columns: 1fr; gap: 12px; }
-  .nav-links { position: static; }
-  .panel[id] { scroll-margin-top: 8px; }
+  .setup-plan { grid-template-columns: 1fr; gap: 6px; }
+  .study-page .panel[id] { scroll-margin-top: 8px; }
   .component-search-field input, .control .value, .custom-component .value { font-size: 16px; }
   .product-streams { gap: 7px; }
   .product-stream { padding: 7px; }

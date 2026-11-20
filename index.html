@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d171d">
   <title>Distillation Design Lab</title>
-  <link rel="stylesheet" href="styles.css?v=limits-first">
+  <link rel="stylesheet" href="styles.css?v=setup-first">
   <script src="mixture.js?v=limits-first" defer></script>
-  <script src="app.js?v=limits-first" defer></script>
-  <script src="lessons.js?v=limits-first" defer></script>
-  <script src="intro.js?v=limits-first" defer></script>
+  <script src="app.js?v=setup-first" defer></script>
+  <script src="lessons.js?v=setup-first" defer></script>
+  <script src="intro.js?v=setup-first" defer></script>
   <script src="walkthrough.js?v=limits-first" defer></script>
 </head>
 <body>
@@ -26,7 +26,10 @@
   </header>
   <main class="container">
     <nav class="nav-links" aria-label="Lab sections">
-      <a href="#prediction">First lesson</a><a href="#equipment">Column tour</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#compare">Compare cases</a><a href="#gilliland">Gilliland</a><a href="#setup">Experiment</a><a href="theory.html#dof-calculation" data-dof-link>DOF proof</a>
+      <button class="section-menu-toggle quiet-button" id="section-menu-toggle" type="button" aria-expanded="false" aria-controls="section-menu-items">Lab sections <span aria-hidden="true">⌄</span></button>
+      <div class="section-menu-items" id="section-menu-items">
+        <a href="#prediction">First lesson</a><a href="#setup">Setup &amp; DOF</a><a href="#products">Product split</a><a href="#equipment">Column flows</a><a href="#fenske">Fenske</a><a href="#underwood">Underwood</a><a href="#compare">Compare cases</a><a href="#gilliland">Gilliland</a>
+      </div>
     </nav>
     <section class="intro" aria-labelledby="page-title">
       <div class="hero-copy">
@@ -40,6 +43,7 @@
         <p class="eyebrow">BENZENE–TOLUENE · FIRST LESSON</p>
         <h2 id="prediction-title">Would nine stages be enough?</h2>
         <p>The column takes a 50/50 liquid feed. The target is 95 mol% benzene in the distillate and 95 mol% toluene in the bottoms.</p>
+        <p class="prediction-terms">An ideal stage is one equilibrium contact between vapor and liquid. Reflux is condensed liquid returned to the column.</p>
         <form id="prediction-form">
           <fieldset class="prediction-choices">
             <legend>Can nine ideal stages deliver both products at exactly minimum reflux?</legend>
@@ -49,11 +53,134 @@
               <label><input type="radio" name="prediction" value="Not sure">Not sure</label>
             </div>
           </fieldset>
-          <button class="primary-button" type="submit">Inspect total reflux <span aria-hidden="true">↓</span></button>
+          <button class="primary-button" type="submit">Set up the example <span aria-hidden="true">↓</span></button>
           <p class="input-caption" id="prediction-replace" hidden>Starting the lesson loads the benzene–toluene example into the experiment.</p>
         </form>
         <p class="prediction-record" id="prediction-record" hidden></p>
       </section>
+    </section>
+
+    <section class="panel dof" id="setup" aria-labelledby="dof-title">
+      <div class="section-top connection-heading">
+        <div>
+          <p class="eyebrow">DEGREES OF FREEDOM</p>
+          <h2 id="dof-title">Set up the separation</h2>
+          <p class="connection-caption">A degree of freedom is a choice the equations leave to you. Once the feed and equipment assumptions are fixed, this model has four design choices.</p>
+        </div>
+        <div class="setup-actions" id="setup-actions">
+          <p class="dof-readout" id="dof-input-status" hidden><output id="dof-remaining" aria-live="polite">4</output> of 4 design inputs need attention</p>
+          <button class="quiet-button" id="start-walkthrough" type="button">Start walkthrough</button>
+          <button class="quiet-button reset" type="reset" form="column-form"><span aria-hidden="true">↻</span> Reset inputs</button>
+        </div>
+      </div>
+      <dl class="setup-plan" aria-label="Design sequence">
+        <div><dt>Define the case</dt><dd>Specify the feed composition, feed liquid fraction, relative volatilities, and the light and heavy keys.</dd></div>
+        <div><dt>Set two recovery targets</dt><dd>Choose how much light key goes to the distillate and how much heavy key goes to the bottoms.</dd></div>
+        <div><dt>Make two operating choices</dt><dd>Choose a working reflux above the minimum and an illustrative feed tray location.</dd></div>
+      </dl>
+      <div class="guided-case" id="guided-case" hidden>
+        <div>
+          <h3>Benzene–toluene lesson case</h3>
+          <p>Start with 50 mol benzene and 50 mol toluene as saturated liquid. Benzene is the light key. Both key recoveries are set to 95% for the prediction.</p>
+          <p>For benzene, 47.50 mol goes to the distillate and the remaining 2.50 mol goes to the bottoms. The recovery fixes the split because both amounts must add to 50 mol.</p>
+          <p>Inspect both limits before choosing a working reflux.</p>
+        </div>
+        <button class="quiet-button" id="edit-guided-case" type="button">Leave lesson and edit this case</button>
+      </div>
+      <form id="column-form" class="dof-grid">
+        <fieldset class="input-group">
+          <legend>Given · Feed and mixture</legend>
+          <div id="mixture-picker-step">
+            <div class="component-picker" id="component-picker">
+              <div class="option-with-help" data-option-help="mixture">
+                <label for="component-search">Search hydrocarbons</label>
+              </div>
+              <div class="component-search-field">
+                <span class="search-icon" aria-hidden="true"></span>
+                <input id="component-search" type="search" placeholder="Name or formula, e.g. propane or C3H8"
+                  autocomplete="off" maxlength="60" aria-controls="component-results">
+              </div>
+              <ul class="component-results" id="component-results" aria-label="Matching hydrocarbons" hidden></ul>
+              <div class="custom-component" id="custom-component" hidden>
+                <p>Add <strong id="custom-name"></strong></p>
+                <div class="custom-component-row">
+                  <span class="option-with-help" data-option-help="customAlpha">
+                    <label for="custom-alpha">Relative volatility</label>
+                  </span>
+                  <input class="value" id="custom-alpha" type="number" min="0.000000001" max="1000000000"
+                    step="any" inputmode="decimal" aria-describedby="custom-reference">
+                  <button class="quiet-button" id="custom-add" type="button">Add</button>
+                  <button class="quiet-button" id="custom-cancel" type="button">Cancel</button>
+                </div>
+                <p id="custom-reference"></p>
+                <p id="custom-error" class="input-error" role="status" hidden></p>
+              </div>
+            </div>
+            <div class="mixture-summary">
+              <p id="component-status" role="status">0 components selected</p>
+              <button class="quiet-button" id="sort-mixture" type="button" hidden>Sort by volatility</button>
+              <button class="quiet-button" id="clear-mixture" type="button" hidden>Clear mixture</button>
+            </div>
+            <div class="case-presets" aria-label="Example feeds" role="group">
+              <button class="quiet-button" id="load-pinch-mixture" type="button">Load benzene–toluene</button>
+              <button class="quiet-button" id="load-course-mixture" type="button">Load course example</button>
+            </div>
+          </div>
+          <p class="input-caption" id="preset-replace" hidden>Loading an example replaces the active feed and resets the design values.</p>
+          <p class="input-caption" id="mixture-start">Search by name or formula and add at least two hydrocarbons.</p>
+          <div id="feed-conditions">
+            <div class="key-pair-field" id="key-pair-field" hidden>
+              <span class="option-with-help" data-option-help="keyPair"><label for="key-pair">Light / heavy key pair</label></span>
+              <select id="key-pair"></select>
+            </div>
+            <div id="basis-controls" class="column-controls"></div>
+          </div>
+          <div id="mixture-inputs" hidden>
+            <table class="mixture-table">
+              <caption>Feed and relative volatility, most volatile first</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Component</th>
+                  <th scope="col"><span class="option-with-help" data-option-help="feedPercent">mol %</span></th>
+                  <th scope="col"><span class="option-with-help" data-option-help="componentAlpha">α</span></th>
+                  <th scope="col"><span class="sr-only">Remove</span></th>
+                </tr>
+              </thead>
+              <tbody id="mixture-rows"></tbody>
+            </table>
+            <p class="input-error" id="feed-balance-error" role="status" hidden></p>
+            <p class="input-caption">Adding or removing components rebalances the feed to 100 mol%. Edit the illustrative α values for your conditions.</p>
+          </div>
+        </fieldset>
+        <fieldset class="input-group">
+          <legend>Choose · Four design specifications</legend>
+          <p class="input-caption">All four inputs have starting values. The lab needs a valid feed to calculate a design. Recovery is the share of an incoming component that reaches its intended product.</p>
+          <div id="design-controls" class="column-controls">
+            <div id="recovery-controls"></div>
+            <div id="operating-controls"></div>
+          </div>
+        </fieldset>
+      </form>
+      <p class="input-error" id="input-error" role="status" hidden></p>
+      <div class="setup-footer">
+        <a class="primary-button" href="#products">Next · Follow the products ↓</a>
+        <a class="text-link" id="setup-results-link" href="#gilliland">See my stage estimate ↓</a>
+        <a class="text-link" href="theory.html#dof-calculation" data-dof-link>See the full DOF proof</a>
+        <a class="text-link" href="theory.html#choices" data-dof-link>Try one recovery decision in Theory</a>
+      </div>
+    </section>
+
+    <section class="panel products" id="products" aria-labelledby="products-title">
+      <div class="products-intro">
+        <h2 id="products-title">Follow 100 mol of feed</h2>
+        <p>Recovery answers “where does this component go?” Product composition answers “what fraction of this stream is that component?” The balance gives the target split for the two limit calculations.</p>
+        <p id="product-example" class="equation">Add at least two hydrocarbons to calculate the product split.</p>
+        <div class="lesson-links">
+          <a class="text-link" href="#setup">Back to setup ↑</a>
+          <a class="text-link" href="#equipment">Next · Follow the column flows ↓</a>
+        </div>
+      </div>
+      <div class="product-streams" id="product-streams"></div>
     </section>
 
     <figure class="panel equipment" id="equipment" aria-labelledby="equipment-title">
@@ -66,6 +193,7 @@
           <label class="sr-only" for="equipment-mode">Column operating case</label>
           <select id="equipment-mode">
             <option value="design">Working design</option>
+            <option value="flow">Flow paths</option>
             <option value="total">Total reflux · Fenske</option>
             <option value="minimum">Minimum reflux · Underwood</option>
           </select>
@@ -92,8 +220,8 @@
         <div><dt>Products</dt><dd>Distillate leaves at the top. Bottoms leave through the reboiler.</dd></div>
       </dl>
       <div class="lesson-links">
-        <a class="text-link" href="#fenske">Return to total reflux</a>
-        <a class="text-link" href="#underwood" data-lesson-next="minimum">Continue to minimum reflux ↓</a>
+        <a class="text-link" href="#products">Back to the product balance ↑</a>
+        <a class="text-link" id="equipment-next" href="#fenske">Next · Inspect total reflux ↓</a>
       </div>
     </figure>
 
@@ -139,7 +267,7 @@
         </figure>
         <div class="lesson-links">
           <a class="text-link" href="#equipment" data-equipment-case="total">See why product flow stops ↑</a>
-          <a class="text-link" href="#underwood" data-lesson-next="minimum">Next · Inspect minimum reflux ↓</a>
+          <a class="text-link" href="#underwood" id="fenske-next">Next · Inspect minimum reflux ↓</a>
         </div>
       </div>
 
@@ -219,6 +347,7 @@
           <p>At this reflux, a step starting at x = 0.50 ends at x = 0.50. Both the operating line and the equilibrium curve increase with composition, so a step starting above 0.50 also ends above 0.50. Every finite sequence from the distillate stays above the feed composition.</p>
         </details>
         <button class="primary-button lesson-action" id="check-prediction" type="button" hidden>Check my prediction <span aria-hidden="true">↓</span></button>
+        <a class="text-link lesson-action" href="#fenske" id="prediction-needs-fenske" hidden>Inspect total reflux first ↑</a>
       </figure>
     </section>
 
@@ -256,7 +385,7 @@
       </div>
       <div class="lesson-links" id="comparison-return" hidden>
         <a class="text-link" href="#fenske">Review total reflux</a>
-        <a class="text-link" href="#underwood" data-lesson-next="minimum">Return to the pinch</a>
+        <a class="text-link" href="#underwood">Return to the pinch</a>
       </div>
     </section>
 
@@ -277,7 +406,7 @@
           </div>
         </fieldset>
       </div>
-      <p class="connection-caption" id="gilliland-pending" hidden>Check your prediction at the <a href="#underwood" data-lesson-next="minimum">pinch demonstration</a> to reveal the working estimate.</p>
+      <p class="connection-caption" id="gilliland-pending" hidden>Check your prediction at the <a href="#underwood">pinch demonstration</a> to reveal the working estimate.</p>
       <div class="gilliland-grid" id="gilliland-workspace">
         <div class="gilliland-chart">
           <div class="operating-point" id="operating-readout" tabindex="-1" aria-live="polite" aria-atomic="true">
@@ -328,114 +457,9 @@
       </div>
       <div class="lesson-links">
         <a class="text-link" href="#compare">Back to the three cases</a>
-        <a class="text-link" href="#setup">Next · Change the experiment ↓</a>
+        <a class="text-link" href="#setup">Change the experiment ↑</a>
       </div>
     </section>
-    <section class="panel dof" id="setup" aria-labelledby="dof-title">
-      <div class="section-top connection-heading">
-        <div>
-          <p class="eyebrow">DEGREES OF FREEDOM</p>
-          <h2 id="dof-title">What can you choose?</h2>
-          <p class="connection-caption">A degree of freedom is a choice the equations leave to you. Fix the feed and equipment assumptions, then make four choices: two key recoveries, the reflux, and the feed location.</p>
-        </div>
-        <div class="setup-actions">
-          <p class="dof-readout" id="dof-input-status" hidden><output id="dof-remaining" aria-live="polite">4</output> of 4 design inputs need attention</p>
-          <button class="quiet-button" id="start-walkthrough" type="button">Start walkthrough</button>
-          <button class="quiet-button reset" type="reset" form="column-form"><span aria-hidden="true">↻</span> Reset inputs</button>
-        </div>
-      </div>
-      <form id="column-form" class="dof-grid">
-        <fieldset class="input-group">
-          <legend>Given · Feed and mixture</legend>
-          <div id="mixture-picker-step">
-            <div class="component-picker" id="component-picker">
-              <div class="option-with-help" data-option-help="mixture">
-                <label for="component-search">Search hydrocarbons</label>
-              </div>
-              <div class="component-search-field">
-                <span class="search-icon" aria-hidden="true"></span>
-                <input id="component-search" type="search" placeholder="Name or formula, e.g. propane or C3H8"
-                  autocomplete="off" maxlength="60" aria-controls="component-results">
-              </div>
-              <ul class="component-results" id="component-results" aria-label="Matching hydrocarbons" hidden></ul>
-              <div class="custom-component" id="custom-component" hidden>
-                <p>Add <strong id="custom-name"></strong></p>
-                <div class="custom-component-row">
-                  <span class="option-with-help" data-option-help="customAlpha">
-                    <label for="custom-alpha">Relative volatility</label>
-                  </span>
-                  <input class="value" id="custom-alpha" type="number" min="0.000000001" max="1000000000"
-                    step="any" inputmode="decimal" aria-describedby="custom-reference">
-                  <button class="quiet-button" id="custom-add" type="button">Add</button>
-                  <button class="quiet-button" id="custom-cancel" type="button">Cancel</button>
-                </div>
-                <p id="custom-reference"></p>
-                <p id="custom-error" class="input-error" role="status" hidden></p>
-              </div>
-            </div>
-            <div class="mixture-summary">
-              <p id="component-status" role="status">0 components selected</p>
-              <button class="quiet-button" id="sort-mixture" type="button" hidden>Sort by volatility</button>
-              <button class="quiet-button" id="clear-mixture" type="button" hidden>Clear mixture</button>
-            </div>
-            <div class="case-presets" aria-label="Example feeds" role="group">
-              <button class="quiet-button" id="load-pinch-mixture" type="button">Load benzene–toluene</button>
-              <button class="quiet-button" id="load-course-mixture" type="button">Load course example</button>
-            </div>
-          </div>
-          <p class="input-caption" id="preset-replace" hidden>Loading an example replaces the active feed and resets the design values.</p>
-          <p class="input-caption" id="mixture-start">Search by name or formula and add at least two hydrocarbons.</p>
-          <div id="feed-conditions">
-            <div class="key-pair-field" id="key-pair-field" hidden>
-              <span class="option-with-help" data-option-help="keyPair"><label for="key-pair">Light / heavy key pair</label></span>
-              <select id="key-pair"></select>
-            </div>
-            <div id="basis-controls" class="column-controls"></div>
-          </div>
-          <div id="mixture-inputs" hidden>
-            <table class="mixture-table">
-              <caption>Feed and relative volatility, most volatile first</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Component</th>
-                  <th scope="col"><span class="option-with-help" data-option-help="feedPercent">mol %</span></th>
-                  <th scope="col"><span class="option-with-help" data-option-help="componentAlpha">α</span></th>
-                  <th scope="col"><span class="sr-only">Remove</span></th>
-                </tr>
-              </thead>
-              <tbody id="mixture-rows"></tbody>
-            </table>
-            <p class="input-error" id="feed-balance-error" role="status" hidden></p>
-            <p class="input-caption">Adding or removing components rebalances the feed to 100 mol%. Edit the illustrative α values for your conditions.</p>
-          </div>
-        </fieldset>
-        <fieldset class="input-group">
-          <legend>Choose · Four design specifications</legend>
-          <p class="input-caption">All four inputs have starting values. The lab needs a valid feed to calculate a design. Recovery is the share of an incoming component that reaches its intended product.</p>
-          <div id="design-controls" class="column-controls">
-            <div id="recovery-controls"></div>
-            <div id="operating-controls"></div>
-          </div>
-        </fieldset>
-      </form>
-      <p class="input-error" id="input-error" role="status" hidden></p>
-      <div class="setup-footer">
-        <p>Changing the feed defines a new case. Each case takes the same four design choices.</p>
-        <a href="theory.html#choices" data-dof-link>Try one recovery decision in Theory</a>
-        <a href="#products">Next · Follow the products ↓</a>
-      </div>
-    </section>
-
-    <section class="panel products" id="products" aria-labelledby="products-title">
-      <div class="products-intro">
-        <h2 id="products-title">Follow 100 mol of feed</h2>
-        <p>Recovery answers “where does this component go?” Product composition answers “what fraction of this stream is that component?”</p>
-        <p id="product-example" class="equation">Add at least two hydrocarbons to calculate the product split.</p>
-        <a class="text-link" href="#fenske">Return to total reflux ↑</a>
-      </div>
-      <div class="product-streams" id="product-streams"></div>
-    </section>
-
     <footer class="lab-footer">
       <span>Distillation shortcut model · Constant relative volatility · Equilibrium stages</span>
       <a href="#top">Back to top ↑</a>

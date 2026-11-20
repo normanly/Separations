@@ -4,11 +4,14 @@ const predictionForm = $('prediction-form');
 const predictionCheck = $('check-prediction');
 const comparisonPoint = $('compare-working-point');
 const comparisonPending = $('compare-working-pending');
+const equipmentMode = $('equipment-mode');
+const sectionToggle = $('section-menu-toggle');
+const sectionMenu = sectionToggle.closest('nav');
 let prediction;
 let lessonPhase = 'idle';
 
-function isInspectingLimits() {
-  return lessonPhase === 'total' || lessonPhase === 'minimum';
+function isGuidedLesson() {
+  return lessonPhase === 'setup' || lessonPhase === 'limits';
 }
 
 function showLessonSection(id) {
@@ -21,28 +24,42 @@ function showLessonSection(id) {
 }
 
 function showEquipmentCase(mode) {
-  const select = $('equipment-mode');
-  select.value = mode;
-  select.dispatchEvent(new Event('change'));
+  if (equipmentMode.value === mode) return;
+  equipmentMode.value = mode;
+  equipmentMode.dispatchEvent(new Event('change'));
+}
+
+function updateEquipmentLink() {
+  const link = $('equipment-next');
+  const mode = equipmentMode.value;
+  const atMinimum = mode === 'minimum';
+  link.href = atMinimum ? '#underwood' : '#fenske';
+  link.textContent = atMinimum ? 'Return to the pinch demonstration ↓'
+    : mode === 'total' ? 'Return to the Fenske lesson ↓' : 'Next · Inspect total reflux ↓';
 }
 
 function updateIntroLesson() {
-  const inspecting = isInspectingLimits();
+  const inspecting = isGuidedLesson();
   const result = currentResult;
   const point = result?.point;
   const active = feedAndKeyInputs().componentInputs.length > 0;
 
-  $('open-experiment-label').textContent = active ? 'Resume my experiment' : 'Open the experiment';
+  $('open-experiment-label').textContent = inspecting ? 'Return to the lesson setup' : active ? 'Resume my experiment' : 'Open the experiment';
   $('prediction-replace').hidden = !active;
   $('preset-replace').hidden = !active;
-  predictionCheck.hidden = lessonPhase !== 'minimum';
+  $('guided-case').hidden = !inspecting;
+  $('column-form').hidden = inspecting;
+  $('setup-actions').hidden = inspecting;
+  $('setup-results-link').hidden = inspecting || !point;
+  predictionCheck.hidden = lessonPhase !== 'limits';
+  $('prediction-needs-fenske').hidden = lessonPhase !== 'setup';
   $('skip-prediction-check').hidden = inspecting;
   $('comparison-actions').hidden = inspecting;
   $('comparison-return').hidden = !inspecting;
   $('gilliland-pending').hidden = !inspecting;
   $('gilliland-axes').hidden = inspecting;
   $('gilliland-workspace').hidden = inspecting;
-  $('equipment-mode').options[0].disabled = inspecting;
+  equipmentMode.querySelector('option[value="design"]').disabled = inspecting;
 
   const matchesPinch = result?.names.length === 2 && result.names[0] === 'Benzene' && result.names[1] === 'Toluene'
     && result.feed[0] === pinchFeed && result.quality === 1 && result.alpha[0] === pinchAlpha
@@ -80,26 +97,31 @@ predictionForm.addEventListener('submit', (event) => {
   event.preventDefault();
   prediction = new FormData(predictionForm).get('prediction');
   if (!prediction) return;
-  lessonPhase = 'total';
+  lessonPhase = 'setup';
   $('prediction-record').textContent = `Prediction recorded. You chose ${prediction.toLowerCase()}.`;
   $('prediction-record').hidden = false;
   $('prediction-answer').hidden = true;
-  showEquipmentCase('total');
+  showEquipmentCase('flow');
   $('condenser-mode').value = 'total';
   $('pinch-mode').value = 'minimum';
   $('pinch-mode').dispatchEvent(new Event('change'));
   loadPinchExample();
-  showLessonSection('fenske');
+  showLessonSection('setup');
 });
 
-for (const link of document.querySelectorAll('[data-lesson-next="minimum"]')) {
-  link.addEventListener('click', () => {
-    if (lessonPhase !== 'total') return;
-    lessonPhase = 'minimum';
-    showEquipmentCase('minimum');
-    updateIntroLesson();
-  });
-}
+$('fenske-next').addEventListener('click', () => {
+  if (!isGuidedLesson()) return;
+  lessonPhase = 'limits';
+  showEquipmentCase('minimum');
+  updateIntroLesson();
+});
+
+$('edit-guided-case').addEventListener('click', () => {
+  lessonPhase = 'idle';
+  showEquipmentCase('design');
+  updateIntroLesson();
+  showLessonSection('setup');
+});
 
 predictionCheck.addEventListener('click', () => {
   lessonPhase = 'checked';
@@ -119,10 +141,43 @@ $('compare-load-course').addEventListener('click', () => {
 });
 
 window.addEventListener('hashchange', () => {
-  if (location.hash !== '#setup' || !isInspectingLimits()) return;
-  lessonPhase = 'idle';
-  showEquipmentCase('design');
+  if (!isGuidedLesson()) return;
+  if (location.hash === '#fenske') {
+    lessonPhase = 'limits';
+    showEquipmentCase('total');
+  } else if (location.hash === '#underwood') {
+    showEquipmentCase('minimum');
+  }
   updateIntroLesson();
 });
+
+function setSectionMenu(open) {
+  sectionToggle.setAttribute('aria-expanded', String(open));
+  sectionMenu.classList.toggle('section-menu-open', open);
+}
+
+sectionMenu.classList.add('section-menu-ready');
+sectionToggle.addEventListener('click', () => setSectionMenu(!sectionMenu.classList.contains('section-menu-open')));
+$('section-menu-items').addEventListener('click', (event) => {
+  const link = event.target.closest('a');
+  if (!link || !sectionMenu.classList.contains('section-menu-open') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  setSectionMenu(false);
+  showLessonSection(link.hash.slice(1));
+});
+sectionMenu.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || !sectionMenu.classList.contains('section-menu-open')) return;
+  setSectionMenu(false);
+  sectionToggle.focus();
+});
+sectionMenu.addEventListener('focusout', (event) => {
+  if (event.relatedTarget && !sectionMenu.contains(event.relatedTarget)) setSectionMenu(false);
+});
+document.addEventListener('click', (event) => {
+  if (sectionMenu.classList.contains('section-menu-open') && !sectionMenu.contains(event.target)) setSectionMenu(false);
+});
+
+equipmentMode.addEventListener('change', updateEquipmentLink);
 document.addEventListener('lab:results', updateIntroLesson);
+updateEquipmentLink();
 updateIntroLesson();

@@ -122,9 +122,9 @@ syncFlowPlayback();
 
 document.querySelectorAll('[data-equipment-case]').forEach((link) => {
   link.addEventListener('click', () => {
-    $('equipment-mode').value = link.dataset.equipmentCase;
-    drawEquipment();
-    clearFlow();
+    const mode = $('equipment-mode');
+    mode.value = link.dataset.equipmentCase;
+    mode.dispatchEvent(new Event('change'));
   });
 });
 

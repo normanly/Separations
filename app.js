@@ -12,7 +12,7 @@ const recoveryKeys = ['lightRecovery', 'heavyRecovery'];
 const designKeys = [...recoveryKeys, 'multiple', 'feedPosition'];
 
 const optionHelp = {
-  equipmentMode: ['Column operating case', 'Working design uses the reflux you chose. Total reflux returns all condensate and withdraws no product. At minimum reflux, the calculation reaches the limiting pinch that would take infinitely many stages.'],
+  equipmentMode: ['Column operating case', 'Flow paths show the equipment and stream directions. Working design uses the reflux you chose. Total reflux returns all condensate and withdraws no product. At minimum reflux, a pinch prevents any finite number of stages from reaching the target.'],
   mixture: ['Search hydrocarbons', 'Add two or more hydrocarbons by name or formula. For compounds outside the list, enter a name and relative volatility. Catalog values are rough starting estimates from boiling points.'],
   customAlpha: ['Custom component relative volatility (α)', 'Enter the component’s volatility relative to the reference named below. A larger value means it enters the vapor more easily. The table rescales every value when you change heavy keys.'],
   keyPair: ['Light and heavy keys', 'Choose the boundary between neighboring components in volatility order. The light key is the more volatile component. The heavy key sets the α reference at 1. The shortcut sends other components above this pair overhead and those below it to the bottoms.'],
@@ -566,9 +566,11 @@ function drawEquipment() {
   const { ctx, width } = prepareCanvas(canvas);
   const result = currentResult;
   const mode = $('equipment-mode').value;
+  const schematic = mode === 'flow';
   const total = mode === 'total';
   const minimum = mode === 'minimum';
-  const basis = total ? 'Steady total reflux uses internal circulation only.'
+  const basis = schematic ? 'Follow the streams through the condenser, reflux drum, and reboiler.'
+    : total ? 'Steady total reflux uses internal circulation only.'
     : minimum ? 'Limiting target amounts on a 100 mol feed basis.' : 'Flow basis for the working case is 100 mol of feed.';
   const quality = result?.quality;
   const feedPhase = total || quality === undefined ? ''
@@ -577,8 +579,8 @@ function drawEquipment() {
         : `Two-phase feed with ${Math.round(100 * quality)}% liquid by moles (q = ${fixed(quality)}).`;
   $('equipment-basis').textContent = feedPhase ? `${basis} ${feedPhase}` : basis;
   flowRoutes = [];
-  const reflux = minimum ? result?.rMin : result?.point?.reflux;
-  const stages = total ? result?.nMin : minimum && result?.rMin ? Infinity : result?.point?.stages;
+  const reflux = minimum ? result?.rMin : mode === 'design' ? result?.point?.reflux : undefined;
+  const stages = total ? result?.nMin : minimum && result?.rMin ? Infinity : mode === 'design' ? result?.point?.stages : undefined;
   const rate = result?.distillateRate * 100;
   const trays = mode === 'design' ? result?.point?.trays : null;
   const feedMark = trays ? Math.round(6 * trays.above / Math.max(1, trays.above + trays.below)) : 3;
@@ -663,17 +665,19 @@ function drawEquipment() {
 
   text('Condenser', condenser, 24, muted, 'center');
   text('Reflux drum', drum, 69, muted, 'center');
-  text(`Distillate ${distillate}`, exit, 114, outletColor, 'right');
-  text(`Feed ${feed}`, column - towerHalf - 3, feedY - 9, feedColor, 'right');
-  text(`Reflux ${returned}`, (column + towerHalf + drum) / 2, 122, liquid, 'center');
+  text(schematic ? 'Distillate' : `Distillate ${distillate}`, exit, 114, outletColor, 'right');
+  text(schematic ? 'Feed' : `Feed ${feed}`, column - towerHalf - 3, feedY - 9, feedColor, 'right');
+  text(schematic ? 'Reflux' : `Reflux ${returned}`, (column + towerHalf + drum) / 2, 122, liquid, 'center');
   if (feedMark >= 2) text('Above feed', column + towerHalf + 18, Math.min(154, feedY - 8));
   if (feedMark < 6) text('Below feed', column + towerHalf + 9, Math.max(171, feedY + 16));
   text('Reboiler', boiler + 19, 242);
-  text(`Bottoms ${bottoms}`, exit, 287, outletColor, 'right');
+  text(schematic ? 'Bottoms' : `Bottoms ${bottoms}`, exit, 287, outletColor, 'right');
   text('Tray column', column, 286, muted, 'center');
   if (stages !== undefined) text(`N ${Number.isFinite(stages) ? formatEstimate(stages) : '→ ∞'}`, column - 7, 65, vapor, 'right');
 
-  const caption = total
+  const caption = schematic
+    ? 'Vapor rises to the condenser. The drum splits the condensed liquid between reflux and distillate. The reboiler sends vapor back up the column.'
+    : total
     ? 'The drum returns all condensate to the column. Feed, distillate, and bottoms are zero at steady total reflux.'
     : minimum
       ? (result?.rMin ? 'The stream labels show the target split. At minimum reflux a pinch stops a finite set of trays from reaching that target. The drawn trays show the flow path.' : 'Set valid column inputs with a positive minimum reflux to show the pinch case.')
@@ -682,7 +686,8 @@ function drawEquipment() {
         : 'The animation shows flow directions. Set up a mixture and operating conditions to calculate stream amounts.';
   const sketchNote = trays ? ' The highlighted line marks the feed height on the schematic. Read the tray counts below.' : '';
   $('equipment-caption').textContent = caption + sketchNote;
-  canvas.setAttribute('aria-label', `Tray column with rectifying and stripping sections, condenser, reflux drum and reboiler. Feed ${feed}, distillate ${distillate}, bottoms ${bottoms}, reflux ${returned}. ${feedPhase} ${caption}${sketchNote}`);
+  const amounts = schematic ? '' : ` Feed ${feed}, distillate ${distillate}, bottoms ${bottoms}, reflux ${returned}.`;
+  canvas.setAttribute('aria-label', `Tray column with rectifying and stripping sections, condenser, reflux drum and reboiler.${amounts} ${feedPhase} ${caption}${sketchNote}`);
 }
 
 function updateDof() {
