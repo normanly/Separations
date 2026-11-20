@@ -5,7 +5,7 @@ const parameters = [
   { key: 'heavyRecovery', label: 'Heavy-key recovery to bottoms', symbol: 'r<sub>HK,B</sub>', min: 0.51, max: 0.99, step: 0.01, initial: 0.96 },
   { key: 'quality', label: 'Feed liquid fraction', symbol: 'q', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['All vapor', 'All liquid'] },
   { key: 'multiple', label: 'Operating reflux multiplier', symbol: 'R/R<sub>min</sub>', min: 1.05, max: 5, step: 0.01, initial: 1.50, ends: ['1.05 × minimum', '5.00 × minimum'] },
-  { key: 'feedPosition', label: 'Feed tray position', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'] },
+  { key: 'feedPosition', label: 'Illustrative feed-tray placement', symbol: 'f', min: 0, max: 1, step: 0.01, initial: 0.50, ends: ['Top tray', 'Bottom tray'], note: 'Allocates trays above and below the feed. Checking the recoveries requires a stage-by-stage calculation.' },
 ];
 
 const recoveryKeys = ['lightRecovery', 'heavyRecovery'];
@@ -22,7 +22,7 @@ const optionHelp = {
   heavyRecovery: ['Heavy-key recovery to bottoms', 'The share of the incoming heavy key sent to the bottom product. At 0.96, 96% of the heavy key goes to the bottoms and 4% goes overhead. Product purity instead uses the total moles in the product as its basis.'],
   quality: ['Feed quality (q)', 'q is the feed quality. In this lab it measures the liquid share of the incoming feed by moles. q = 0 means saturated vapor, q = 0.50 means half liquid, and q = 1 means saturated liquid. Underwood uses q to account for vapor entering with the feed.'],
   multiple: ['Operating reflux multiplier (R/Rₘᵢₙ)', 'R is the liquid returned to the column divided by the distillate flow. A multiplier of 1.50 sets R to 1.5 times Underwood’s minimum. More reflux reduces the required stages and increases internal circulation.'],
-  feedPosition: ['Feed tray position (f)', 'Where the feed enters. 0 is the top tray, 0.50 is near the middle, and 1 is the bottom tray. This splits the estimated trays above and below the feed.'],
+  feedPosition: ['Illustrative feed-tray placement (f)', 'Choose the feed height. 0 is the top tray, 0.50 is near the middle, and 1 is the bottom tray. Gilliland supplies the total stages. This setting marks a possible feed height and leaves the stage estimate unchanged.'],
   pinchMode: ['Pinch example reflux case', 'At minimum reflux, the tray steps crowd together where the equilibrium and operating lines meet. At 1.5 times minimum reflux, a gap opens and the steps reach the feed in a finite number of contacts. This plot uses a fixed two-component example.'],
   condenserMode: ['Condenser split example', 'The reflux drum divides 100 mol of condensate into reflux and distillate. Use total reflux to see the Fenske limit, or choose a finite reflux to see how much distillate can leave.'],
   designAxes: ['Reflux and stages axes', 'Shows the actual reflux ratio R horizontally and the estimated number of stages N vertically. Use this view to read your operating point directly.'],
@@ -41,21 +41,17 @@ const colors = {
 
 const $ = (id) => document.getElementById(id);
 const fixed = (value) => value.toFixed(2);
+const moleFormat = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
 const formatEstimate = (value) => {
   if (value >= 10000 || (value > 0 && value < 0.01)) return value.toExponential(2);
   return fixed(value);
 };
 
-function minimumStages(alpha, distillate, bottoms, [light, heavy]) {
-  return (Math.log(distillate[light] / distillate[heavy])
-    - Math.log(bottoms[light] / bottoms[heavy])) / Math.log(alpha[light] / alpha[heavy]);
-}
-
 function underwoodSum(alpha, composition, root) {
   return alpha.reduce((sum, volatility, i) => sum + volatility * composition[i] / (volatility - root), 0);
 }
 
-function underwood(alpha, feed, distillate, quality, [light, heavy]) {
+function underwoodRoot(alpha, feed, quality, [light, heavy]) {
   // The shortcut uses the root between adjacent keys, where the feed sum is strictly increasing.
   let low = alpha[heavy];
   let high = alpha[light];
@@ -66,11 +62,11 @@ function underwood(alpha, feed, distillate, quality, [light, heavy]) {
     else high = middle;
   }
   const root = (low + high) / 2;
-  return { root, minimum: underwoodSum(alpha, distillate, root) - 1 };
+  return root > alpha[heavy] && root < alpha[light] ? root : undefined;
 }
 
 function formatUnderwoodRoot({ root, alpha, keys: [light, heavy] }) {
-  const rounded = root.toFixed(3);
+  const rounded = root.toFixed(5);
   const inBracket = Number(rounded) > alpha[heavy] && Number(rounded) < alpha[light];
   return inBracket ? rounded : String(root);
 }
@@ -95,7 +91,8 @@ function refluxPoint(nMin, rMin, multiplier) {
 }
 
 function createControl(parameter) {
-  const { key, label, symbol, min, max, step, initial, ends = [fixed(min), fixed(max)] } = parameter;
+  const { key, label, symbol, min, max, step, initial, ends = [fixed(min), fixed(max)], note } = parameter;
+  const description = note ? `aria-describedby="${key}-note"` : '';
   const control = document.createElement('div');
   control.className = 'control';
   control.innerHTML = `
@@ -104,11 +101,12 @@ function createControl(parameter) {
         <label for="${key}-value">${label} <span class="symbol" aria-hidden="true">${symbol}</span></label>
       </div>
       <input class="value" type="number" inputmode="decimal" id="${key}-value"
-        min="${min}" max="${max}" step="${step}" value="${fixed(initial)}" required>
+        min="${min}" max="${max}" step="${step}" value="${fixed(initial)}" ${description} required>
     </div>
     <input type="range" id="${key}-range" aria-label="${label} slider"
-      min="${min}" max="${max}" step="${step}" value="${initial}">
+      min="${min}" max="${max}" step="${step}" value="${initial}" ${description}>
     <div class="control-endpoints" aria-hidden="true"><span>${ends[0]}</span><span>${ends[1]}</span></div>
+    ${note ? `<p class="input-caption" id="${key}-note">${note}</p>` : ''}
   `;
   const group = recoveryKeys.includes(key) ? 'recovery-controls' : designKeys.includes(key) ? 'operating-controls' : 'basis-controls';
   $(group).append(control);
@@ -180,7 +178,7 @@ function setControlValue(key, value) {
   $(`${key}-value`).value = fixed(value);
 }
 
-function resolveStreams(values) {
+function resolveFeed() {
   const { componentInputs, keys } = feedAndKeyInputs();
   if (componentInputs.length < 2) return null;
   const names = componentInputs.map(({ name }) => name);
@@ -198,17 +196,31 @@ function resolveStreams(values) {
   if (alpha.some((value, index) => index > 0 && alpha[index - 1] === value)) {
     return { error: 'Use distinct relative volatilities so the shortcut can order the components.' };
   }
+  return { names, keys, alpha, feed };
+}
+
+function resolveStreams({ feed, alpha, keys }, values) {
   const [light, heavy] = keys;
-  const toDistillate = feed.map((fraction, index) => {
-    if (index < light) return fraction;
-    if (index === light) return fraction * values.lightRecovery;
-    if (index === heavy) return fraction * (1 - values.heavyRecovery);
+  const feedAmounts = feed.map((fraction) => 100 * fraction);
+  const distillateAmounts = feedAmounts.map((amount, index) => {
+    if (index < light) return amount;
+    if (index === light) return amount * values.lightRecovery;
+    if (index === heavy) return amount * (1 - values.heavyRecovery);
     return 0;
   });
-  const distillateRate = toDistillate.reduce((sum, moles) => sum + moles, 0);
-  return { names, keys, alpha, feed, distillateRate,
-    distillate: toDistillate.map((moles) => moles / distillateRate),
-    bottoms: feed.map((fraction, index) => (fraction - toDistillate[index]) / (1 - distillateRate)) };
+  const bottomsAmounts = feedAmounts.map((amount, index) => amount - distillateAmounts[index]);
+  const distillateTotal = distillateAmounts.reduce((sum, amount) => sum + amount, 0);
+  const bottomsTotal = bottomsAmounts.reduce((sum, amount) => sum + amount, 0);
+  const factor = alpha[light] / alpha[heavy];
+  const start = bottomsAmounts[light] / bottomsAmounts[heavy];
+  const target = distillateAmounts[light] / distillateAmounts[heavy];
+  const nMin = (Math.log(target) - Math.log(start)) / Math.log(factor);
+  return {
+    distillateAmounts, bottomsAmounts, distillateRate: distillateTotal / 100, nMin,
+    fenskeRatios: { factor, start, target },
+    distillate: distillateAmounts.map((amount) => amount / distillateTotal),
+    bottoms: bottomsAmounts.map((amount) => amount / bottomsTotal),
+  };
 }
 
 function updateProductStreams(result) {
@@ -219,8 +231,8 @@ function updateProductStreams(result) {
   const rate = result?.distillateRate;
   if (result) {
     const inlet = result.feed[light];
-    const overhead = rate * result.distillate[light];
-    $('product-example').textContent = `${fixed(100 * inlet)} mol ${names[light]} × ${(100 * overhead / inlet).toFixed(0)}% recovery = ${fixed(100 * overhead)} mol overhead. Divide by ${fixed(100 * rate)} mol of distillate to get ${fixed(100 * result.distillate[light])} mol%.`;
+    const overhead = result.distillateAmounts[light];
+    $('product-example').textContent = `${fixed(100 * inlet)} mol ${names[light]} × ${(overhead / inlet).toFixed(0)}% recovery = ${fixed(overhead)} mol overhead. Divide by ${fixed(100 * rate)} mol of distillate to get ${fixed(100 * result.distillate[light])} mol%.`;
   } else {
     $('product-example').textContent = names.length < 2
       ? 'Add at least two hydrocarbons to calculate the product split.'
@@ -260,7 +272,6 @@ function updateProductStreams(result) {
 function readInputs() {
   const values = {};
   let error = '';
-  let limitsReady = true;
   for (const control of controls) {
     const { key, label, number, range, min, max } = control;
     if (control.control.hidden) continue;
@@ -268,39 +279,42 @@ function readInputs() {
     number.setAttribute('aria-invalid', String(!valid));
     range.style.setProperty('--fill', `${100 * (range.valueAsNumber - min) / (max - min)}%`);
     if (valid) values[key] = number.valueAsNumber;
-    else if (!['quality', 'multiple', 'feedPosition'].includes(key)) limitsReady = false;
     if (!valid && !error) {
       error = `Enter a value from ${fixed(min)} to ${fixed(max)} in 0.01 increments for ${label.toLowerCase()}.`;
     }
   }
-  return { values, error, limitsReady };
+  return { values, error };
 }
 
 function updateResults() {
   updateFeedBalance();
-  const { values, error, limitsReady } = readInputs();
+  const { values, error } = readInputs();
   updateDof();
   let message = error;
   currentResult = null;
-  const streams = limitsReady ? resolveStreams(values) : null;
-  if (streams?.error) message = streams.error;
-  if (streams && !streams.error) {
+  const feedCase = resolveFeed();
+  if (feedCase?.error) message = feedCase.error;
+  if (feedCase && !feedCase.error) {
     const { quality, multiple, feedPosition } = values;
-    const { alpha, feed, distillate, bottoms, keys } = streams;
-    const nMin = minimumStages(alpha, distillate, bottoms, keys);
-    currentResult = { ...streams, quality, nMin };
+    const { alpha, feed, keys } = feedCase;
+    const streams = recoveryKeys.every((key) => values[key] !== undefined) ? resolveStreams(feedCase, values) : null;
+    currentResult = { ...feedCase, ...streams, quality };
     if (quality !== undefined) {
-      const { root, minimum } = underwood(alpha, feed, distillate, quality, keys);
-      if (root > alpha[keys[1]] && root < alpha[keys[0]] && Number.isFinite(minimum)) {
-        currentResult.root = root;
-        if (minimum > 1e-12) currentResult.rMin = minimum;
-        else message ||= 'This Underwood shortcut did not find a positive minimum reflux for the selected split. Try higher key recoveries or a different feed liquid fraction.';
-      } else {
+      const root = underwoodRoot(alpha, feed, quality, keys);
+      if (root === undefined) {
         message ||= 'The key volatilities are too close to resolve the Underwood root at this precision. Check the relative volatilities or choose a different key pair.';
+      } else {
+        currentResult.root = root;
+        if (streams) {
+          const minimum = underwoodSum(alpha, streams.distillate, root) - 1;
+          if (Number.isFinite(minimum)) currentResult.rMinEstimate = minimum;
+          if (Number.isFinite(minimum) && minimum > 1e-12) currentResult.rMin = minimum;
+          else message ||= 'This Underwood shortcut did not find a positive minimum reflux for the selected split. Try higher key recoveries or a different feed liquid fraction.';
+        }
       }
     }
     if (currentResult.rMin && multiple !== undefined) {
-      const point = refluxPoint(nMin, currentResult.rMin, multiple);
+      const point = refluxPoint(currentResult.nMin, currentResult.rMin, multiple);
       if (point) {
         const wholeStages = point.stages <= Number.MAX_SAFE_INTEGER ? Math.max(2, Math.ceil(point.stages)) : null;
         const above = wholeStages === null || feedPosition === undefined ? null : Math.round(feedPosition * (wholeStages - 2));
@@ -316,18 +330,20 @@ function updateResults() {
   const point = result?.point;
   $('input-error').textContent = message;
   $('input-error').hidden = !message;
-  $('min-stages').value = result ? formatEstimate(result.nMin) : '—';
+  $('min-stages').value = result?.nMin === undefined ? '—' : formatEstimate(result.nMin);
   $('min-reflux').value = result?.rMin ? formatEstimate(result.rMin) : '—';
   $('root-value').textContent = result?.root !== undefined ? `θ ≈ ${formatUnderwoodRoot(result)}` : '';
   $('operating-stages').value = point ? formatEstimate(point.stages) : '—';
   $('operating-reflux').value = point ? formatEstimate(point.reflux) : '—';
   $('rounded-stages').value = point?.wholeStages?.toLocaleString('en-US') ?? '—';
   $('plot-message').hidden = Boolean(result?.rMin);
-  if (!result?.rMin) $('plot-message').textContent = result?.root !== undefined
-    ? 'This key-root result needs a positive minimum reflux to use the multiplier.'
-    : 'Enter the feed data and both key recoveries to calculate the limits.';
+  if (!result?.rMin) {
+    $('plot-message').textContent = result?.distillate && result.quality !== undefined
+      ? 'The working reflux multiplier needs a positive minimum reflux from Underwood.'
+      : 'Set the feed, feed liquid fraction, and both key recoveries to calculate the limits.';
+  }
   $('operating-legend').hidden = !point;
-  updateProductStreams(result);
+  updateProductStreams(result?.distillate ? result : null);
   drawCharts();
   document.dispatchEvent(new Event('lab:results'));
 }
@@ -552,8 +568,14 @@ function drawEquipment() {
   const mode = $('equipment-mode').value;
   const total = mode === 'total';
   const minimum = mode === 'minimum';
-  $('equipment-basis').textContent = total ? 'Steady total reflux uses internal circulation only.'
+  const basis = total ? 'Steady total reflux uses internal circulation only.'
     : minimum ? 'Limiting target amounts on a 100 mol feed basis.' : 'Flow basis for the working case is 100 mol of feed.';
+  const quality = result?.quality;
+  const feedPhase = total || quality === undefined ? ''
+    : quality === 0 ? 'Saturated vapor feed (q = 0).'
+      : quality === 1 ? 'Saturated liquid feed (q = 1).'
+        : `Two-phase feed with ${Math.round(100 * quality)}% liquid by moles (q = ${fixed(quality)}).`;
+  $('equipment-basis').textContent = feedPhase ? `${basis} ${feedPhase}` : basis;
   flowRoutes = [];
   const reflux = minimum ? result?.rMin : result?.point?.reflux;
   const stages = total ? result?.nMin : minimum && result?.rMin ? Infinity : result?.point?.stages;
@@ -565,7 +587,7 @@ function drawEquipment() {
   allocation.hidden = !trays;
   if (trays) {
     const fmt = (count) => count.toLocaleString('en-US');
-    allocation.textContent = `Feed tray ${fmt(trays.feedTray)} from the top · ${fmt(trays.above)} trays above · ${fmt(trays.below)} below · 1 equilibrium reboiler`;
+    allocation.textContent = `Illustrative feed tray ${fmt(trays.feedTray)} from the top · ${fmt(trays.above)} trays above · ${fmt(trays.below)} below · 1 equilibrium reboiler`;
   }
   const feed = total ? '0' : reflux ? '100' : '—';
   const distillate = total ? '0' : reflux ? rate.toFixed(2) : '—';
@@ -612,7 +634,8 @@ function drawEquipment() {
   };
 
   const outletColor = total || minimum ? quiet : product;
-  pipe([[entry, feedY], [column - towerHalf, feedY]], outletColor === quiet ? quiet : liquid, true);
+  const feedColor = total || minimum ? quiet : muted;
+  pipe([[entry, feedY], [column - towerHalf, feedY]], feedColor, true);
   pipe([[column, 75], [column, 49], [condenser - 14, 49]], vapor, true);
   pipe([[condenser + 14, 49], [drum, 49], [drum, 76]], liquid, true);
   const refluxElbow = column + towerHalf + 13;
@@ -625,8 +648,9 @@ function drawEquipment() {
   vessel(column - towerHalf, 76, 2 * towerHalf, 150, towerHalf);
   for (let tray = 0; tray < 7; tray++) {
     const y = 97 + 17 * tray;
+    const feedTray = trays && tray === feedMark;
     drawLine(ctx, [[column - towerHalf + 7 + (tray % 2) * 7, y],
-      [column + towerHalf - 7 - ((tray + 1) % 2) * 7, y]], trays && tray === feedMark ? product : wall, trays && tray === feedMark ? 2 : 1);
+      [column + towerHalf - 7 - ((tray + 1) % 2) * 7, y]], feedTray ? feedColor : wall, feedTray ? 2 : 1);
   }
   pipe([[column - 8, 207], [column - 8, 91]], vapor, true);
   pipe([[column + 8, 91], [column + 8, 207]], liquid, true);
@@ -640,7 +664,7 @@ function drawEquipment() {
   text('Condenser', condenser, 24, muted, 'center');
   text('Reflux drum', drum, 69, muted, 'center');
   text(`Distillate ${distillate}`, exit, 114, outletColor, 'right');
-  text(`Feed ${feed}`, entry, feedY - 9, muted);
+  text(`Feed ${feed}`, column - towerHalf - 3, feedY - 9, feedColor, 'right');
   text(`Reflux ${returned}`, (column + towerHalf + drum) / 2, 122, liquid, 'center');
   if (feedMark >= 2) text('Above feed', column + towerHalf + 18, Math.min(154, feedY - 8));
   if (feedMark < 6) text('Below feed', column + towerHalf + 9, Math.max(171, feedY + 16));
@@ -656,14 +680,16 @@ function drawEquipment() {
       : reflux
         ? 'The reboiler sends vapor up the column. The condenser turns it into liquid, and the drum splits that liquid into reflux and distillate.'
         : 'The animation shows flow directions. Set up a mixture and operating conditions to calculate stream amounts.';
-  $('equipment-caption').textContent = caption;
-  canvas.setAttribute('aria-label', `Tray column with rectifying and stripping sections, condenser, reflux drum and reboiler. Feed ${feed}, distillate ${distillate}, bottoms ${bottoms}, reflux ${returned}. ${caption}`);
+  const sketchNote = trays ? ' The highlighted line marks the feed height on the schematic. Read the tray counts below.' : '';
+  $('equipment-caption').textContent = caption + sketchNote;
+  canvas.setAttribute('aria-label', `Tray column with rectifying and stripping sections, condenser, reflux drum and reboiler. Feed ${feed}, distillate ${distillate}, bottoms ${bottoms}, reflux ${returned}. ${feedPhase} ${caption}${sketchNote}`);
 }
 
 function updateDof() {
   const remaining = controls.filter(({ key, number }) =>
     designKeys.includes(key) && !number.validity.valid).length;
   $('dof-remaining').value = String(remaining);
+  $('dof-input-status').hidden = remaining === 0;
 }
 
 function drawCharts() {
@@ -686,6 +712,24 @@ function resetControlValues() {
   }
 }
 
+function loadCourseExample() {
+  resetControlValues();
+  setCourseMixture();
+}
+
+function loadPinchExample() {
+  resetControlValues();
+  setControlValue('quality', 1);
+  setControlValue('lightRecovery', 0.95);
+  setControlValue('heavyRecovery', 0.95);
+  setPinchMixture();
+}
+
+function focusPresetResult() {
+  if ($('design-walkthrough').hidden) $('key-pair').focus();
+  else $('walkthrough-next').focus({ preventScroll: true });
+}
+
 $('column-form').addEventListener('submit', (event) => event.preventDefault());
 $('column-form').addEventListener('reset', (event) => {
   event.preventDefault();
@@ -693,10 +737,12 @@ $('column-form').addEventListener('reset', (event) => {
   clearMixture();
 });
 $('load-course-mixture').addEventListener('click', () => {
-  resetControlValues();
-  setCourseMixture();
-  if ($('design-walkthrough').hidden) $('key-pair').focus();
-  else $('walkthrough-next').focus({ preventScroll: true });
+  loadCourseExample();
+  focusPresetResult();
+});
+$('load-pinch-mixture').addEventListener('click', () => {
+  loadPinchExample();
+  focusPresetResult();
 });
 document.querySelector('.chart-switch').addEventListener('change', drawCharts);
 $('open-notes').addEventListener('click', () => $('model-notes').showModal());
@@ -705,4 +751,4 @@ $('equipment-mode').addEventListener('change', drawEquipment);
 new ResizeObserver(drawEquipment).observe($('equipment-plot'));
 new ResizeObserver(() => drawUnderwoodRoot(currentResult)).observe($('root-plot'));
 initMixturePicker();
-renderMixture();
+restoreLabCase();

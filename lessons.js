@@ -172,25 +172,27 @@ stageNext.addEventListener('click', () => {
 });
 
 function updateFenskeLesson(result) {
-  const [light, heavy] = result?.keys ?? [];
-  const factor = result ? result.alpha[light] / result.alpha[heavy] : undefined;
-  const start = result ? result.bottoms[light] / result.bottoms[heavy] : undefined;
-  const target = result ? result.distillate[light] / result.distillate[heavy] : undefined;
+  const ratios = result?.fenskeRatios;
+  const { factor, start, target } = ratios ?? {};
+  const factorLabel = !ratios ? '—' : factor < 1.005 ? String(factor) : formatEstimate(factor);
+  if (ratios) {
+    const [light, heavy] = result.keys;
+    const keyAmounts = (amounts) => `(${moleFormat.format(amounts[light])} ÷ ${moleFormat.format(amounts[heavy])})`;
+    $('fenske-work').textContent = `Using key amounts on the 100 mol feed basis, Nmin = ln[${keyAmounts(result.distillateAmounts)} ÷ ${keyAmounts(result.bottomsAmounts)}] ÷ ln(${factor}) ≈ ${formatEstimate(result.nMin)} stages.`;
+  } else {
+    $('fenske-work').textContent = 'Enter the feed and both key recoveries to work this example.';
+  }
   // Reflux changes do not disturb the stage illustration for a fixed separation.
   if (enrichment && enrichment.factor === factor && enrichment.start === start && enrichment.target === target) return;
   shownStages = 0;
   stageHold = 0;
-  enrichment = result ? { factor, start, target, stages: result.nMin } : undefined;
-  stagePlay.disabled = !result;
-  stageNext.disabled = !result;
+  enrichment = ratios ? { factor, start, target, stages: result.nMin } : undefined;
+  stagePlay.disabled = !ratios;
+  stageNext.disabled = !ratios;
   stagePlayback.sync();
-  $('stage-empty').hidden = Boolean(result);
-  $('stage-bars').hidden = !result;
-  const factorLabel = !result ? '—' : factor < 1.005 ? String(factor) : formatEstimate(factor);
+  $('stage-empty').hidden = Boolean(ratios);
+  $('stage-bars').hidden = !ratios;
   $('stage-factor').textContent = factorLabel;
-  $('fenske-work').textContent = result
-    ? `ln(${formatEstimate(target)} ÷ ${formatEstimate(start)}) ÷ ln(${factorLabel}) ≈ ${formatEstimate(result.nMin)} stages`
-    : 'Enter the feed and both key recoveries to work this example.';
   for (const [position, ratio] of [['start', start], ['target', target]]) {
     const share = ratio ? 100 * ratio / (1 + ratio) : 0;
     $(`stage-${position}-bar`).style.width = `${share}%`;
@@ -232,20 +234,23 @@ function buildPinchExample() {
   const reflux = atMinimum ? pinchReflux : 1.5 * pinchReflux;
   const operating = (x) => (reflux * x + pinchDistillate) / (reflux + 1);
   const steps = [[pinchDistillate, pinchDistillate]];
+  const displayedContacts = 9;
   let vapor = pinchDistillate;
-  for (let stage = 0; stage < 13; stage++) {
+  for (let stage = 1; stage <= displayedContacts; stage++) {
     const liquid = vapor / (pinchAlpha - (pinchAlpha - 1) * vapor);
     steps.push([liquid, vapor]);
-    if (liquid <= pinchFeed) break;
+    if (liquid <= pinchFeed || stage === displayedContacts) break;
     vapor = operating(liquid);
     steps.push([liquid, vapor]);
   }
   pinchExample = { atMinimum, reflux, operating, steps };
   pinchSegments = steps.length - 1;
   pinchHold = 0;
+  const contacts = Math.ceil(pinchSegments / 2);
+  const finalLiquid = steps.at(-1)[0].toFixed(4);
   $('pinch-caption').textContent = atMinimum
-    ? `At R = ${fixed(reflux)}, the gap closes at the feed. The steps shrink toward that pinch, so any finite number of stages falls short.`
-    : `At R = ${fixed(reflux)}, the lines separate at the feed. The steps can reach the feed region in a finite number of contacts.`;
+    ? `At R = ${fixed(reflux)}, the gap closes at the feed. After ${contacts} contacts, the liquid is still at x = ${finalLiquid}, above the feed at x = 0.5000. The steps shrink toward the pinch, so any finite number of stages falls short.`
+    : `At R = ${fixed(reflux)}, the lines separate at the feed. After ${contacts} contacts, the liquid reaches x = ${finalLiquid} and crosses the feed composition.`;
 }
 
 function drawPinchLesson() {
@@ -363,9 +368,11 @@ sweep.addEventListener('input', () => {
 
 function updateLessonReadouts() {
   const result = currentResult;
+  const point = result?.point;
   updateFenskeLesson(result);
   updateCondenserProof();
   const root = result?.root;
+  $('underwood-pending').hidden = root === undefined || Boolean(result.distillate);
   const input = $('multiple-value');
   const ready = Boolean(result?.rMin);
   const hasMultiple = input.validity.valid;
@@ -374,16 +381,26 @@ function updateLessonReadouts() {
   $('sweep-play').disabled = !ready;
   sweepPlayback.sync();
   $('sweep-multiple').textContent = ready && hasMultiple ? `${fixed(input.valueAsNumber)} × minimum` : '—';
+  $('sweep-operating-reflux').textContent = point ? formatEstimate(point.reflux) : '—';
+  $('sweep-operating-stages').textContent = point ? formatEstimate(point.stages) : '—';
   sweep.style.setProperty('--fill', `${100 * (sweep.valueAsNumber - Number(sweep.min)) / (Number(sweep.max) - Number(sweep.min))}%`);
   if (root !== undefined) {
-    const sum = underwoodSum(result.alpha, result.distillate, root);
-    $('underwood-work').textContent = `q = ${fixed(result.quality)} → 1 − q = ${fixed(1 - result.quality)} → θ ≈ ${formatUnderwoodRoot(result)}. The second sum is approximately ${formatEstimate(sum)}. Subtract 1 from the unrounded sum for Rmin ≈ ${formatEstimate(sum - 1)}.`;
+    const rootWork = `q = ${fixed(result.quality)} → 1 − q = ${fixed(1 - result.quality)} → θ ≈ ${formatUnderwoodRoot(result)}.`;
+    const minimum = result.rMinEstimate;
+    let refluxWork;
+    if (!result.distillate) {
+      refluxWork = 'Set both key recoveries to calculate the distillate composition and complete the second equation.';
+    } else if (result.rMin) {
+      refluxWork = `The second sum is approximately ${formatEstimate(minimum + 1)}. Subtract 1 from the unrounded sum for Rmin ≈ ${formatEstimate(minimum)}.`;
+    } else {
+      refluxWork = 'The reflux multiplier requires a positive minimum from the second equation.';
+    }
+    $('underwood-work').textContent = `${rootWork} ${refluxWork}`;
     $('root-caption').textContent = 'The curve plots the difference between the two sides of the feed equation. The highlighted zero is the root between the key volatilities.';
   } else {
-    $('underwood-work').textContent = 'Enter the feed, feed quality, and both key recoveries to work this example.';
-    $('root-caption').textContent = 'The root plot appears when those inputs are available.';
+    $('underwood-work').textContent = 'Set the feed, key pair, and feed liquid fraction to solve the first equation for θ.';
+    $('root-caption').textContent = 'The root plot appears once the first equation has a resolvable root.';
   }
-  const point = result?.point;
   $('gilliland-work').textContent = point
     ? `At R ≈ ${formatEstimate(point.reflux)}, X ≈ ${point.x.toFixed(3)} and the fit gives Y ≈ ${point.y.toFixed(3)}. With unrounded values, N = (Nmin + Y) / (1 − Y) ≈ ${formatEstimate(point.stages)} stages.`
     : 'Set a working reflux multiplier to calculate X, Y, and the estimated stage count.';

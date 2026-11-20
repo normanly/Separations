@@ -67,6 +67,7 @@ const courseComponents = [
   ['n-Octane', 0.70],
 ];
 const feedUnits = 1000; // 0.1 mol% per unit
+const labCaseKey = 'distillation-lab:case-v1';
 
 let selectedComponents = [];
 let componentInputs = [];
@@ -83,12 +84,68 @@ function feedAndKeyInputs() {
 function updateFeedBalance() {
   const alpha = componentInputs.map(({ alpha: input }) => input.valueAsNumber);
   $('sort-mixture').hidden = !alpha.some((value, index) => index > 0 && value > alpha[index - 1]);
-  if (!componentInputs.length) return;
-  const entered = componentInputs.slice(0, -1);
-  const balance = componentInputs.at(-1).feed;
-  const remaining = feedUnits - entered.reduce((sum, { feed }) => sum + Math.round(10 * feed.valueAsNumber), 0);
-  balance.value = entered.every(({ feed }) => feed.validity.valid) ? (remaining / 10).toFixed(1) : '';
-  balance.setAttribute('aria-invalid', String(remaining <= 0));
+  const note = $('feed-balance-error');
+  let error = '';
+  if (componentInputs.length) {
+    const entered = componentInputs.slice(0, -1);
+    const balance = componentInputs.at(-1).feed;
+    for (const { feed, alpha } of componentInputs) {
+      feed.setAttribute('aria-invalid', String(!feed.readOnly && !feed.validity.valid));
+      alpha.setAttribute('aria-invalid', String(!alpha.validity.valid));
+    }
+    const valid = entered.every(({ feed }) => feed.validity.valid);
+    const enteredTotal = entered.reduce((sum, { feed }) => sum + Math.round(10 * feed.valueAsNumber), 0);
+    const remaining = feedUnits - enteredTotal;
+    if (!valid) error = 'Enter a value from 0.1 to 99.9 mol% in 0.1 increments for each editable component.';
+    else if (remaining < 1) {
+      error = `The entered fractions total ${(enteredTotal / 10).toFixed(1)} mol%. Leave at least 0.1 mol% for the balance component.`;
+    }
+    balance.value = error ? '' : (remaining / 10).toFixed(1);
+    balance.setAttribute('aria-invalid', String(Boolean(error)));
+  }
+  if (note.textContent !== error) note.textContent = error;
+  note.hidden = !error;
+}
+
+function saveLabCase() {
+  const components = componentInputs.map(({ component, feed, alpha }) => ({
+    name: component.name,
+    logVolatility: component.logVolatility,
+    feedUnits: component.feedUnits,
+    feed: feed.value,
+    alpha: alpha.value,
+  }));
+  const settings = Object.fromEntries(controls.map(({ key, number, range }) =>
+    [key, { value: number.value, range: range.value }]));
+  try {
+    sessionStorage.setItem(labCaseKey, JSON.stringify({ components, keyIndex, settings }));
+  } catch {
+    // The live case remains usable when session storage is unavailable.
+  }
+}
+
+function restoreLabCase() {
+  let saved;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(labCaseKey));
+  } catch {
+    // Start with an empty mixture when there is no readable case.
+  }
+  const components = saved?.components;
+  const validComponents = Array.isArray(components) && components.length <= feedUnits
+    && components.every((component) => typeof component?.name === 'string' && Number.isFinite(component.logVolatility));
+  if (validComponents) {
+    selectedComponents = components.map(({ name, logVolatility, feedUnits }) => ({ name, logVolatility, feedUnits }));
+    const lastKey = Math.max(0, components.length - 2);
+    if (Number.isInteger(saved.keyIndex) && saved.keyIndex >= 0 && saved.keyIndex <= lastKey) keyIndex = saved.keyIndex;
+    for (const { key, number, range } of controls) {
+      const setting = saved.settings?.[key];
+      if (typeof setting?.value === 'string') number.value = setting.value;
+      if (typeof setting?.range === 'string') range.value = setting.range;
+    }
+  }
+  document.addEventListener('lab:results', saveLabCase);
+  renderMixture('', validComponents ? components : []);
 }
 
 function saveComponentInputs() {
@@ -115,7 +172,7 @@ function redistributeFeed() {
   });
 }
 
-function renderMixture(message = '') {
+function renderMixture(message = '', drafts = []) {
   const count = selectedComponents.length;
   const keySelect = $('key-pair');
   keySelect.replaceChildren();
@@ -126,7 +183,6 @@ function renderMixture(message = '') {
   $('key-pair-field').hidden = count < 2;
   $('mixture-inputs').hidden = count === 0;
   $('mixture-start').hidden = count >= 2;
-  $('load-course-mixture').hidden = count > 0;
   $('clear-mixture').hidden = count === 0;
   $('component-status').textContent = message || `${count} component${count === 1 ? '' : 's'} selected`;
 
@@ -150,11 +206,14 @@ function renderMixture(message = '') {
     feed.setAttribute('aria-label', `${name} feed mol percent`);
     feed.value = Number.isFinite(component.feedUnits) ? (component.feedUnits / 10).toFixed(1) : '';
     feed.readOnly = balance;
+    feed.setAttribute('aria-describedby', 'feed-balance-error');
     const alpha = row.querySelector('.volatility');
     alpha.setAttribute('aria-label', `${name} relative volatility`);
     const relative = Math.exp(logVolatility - reference);
     alpha.defaultValue = Number.isFinite(relative) ? String(Number(relative.toPrecision(12))) : '';
     alpha.readOnly = heavy || count === 1;
+    if (!feed.readOnly && typeof drafts[index]?.feed === 'string') feed.value = drafts[index].feed;
+    if (!alpha.readOnly && typeof drafts[index]?.alpha === 'string') alpha.value = drafts[index].alpha;
     const remove = row.querySelector('button');
     remove.setAttribute('aria-label', `Remove ${name}`);
     remove.addEventListener('click', () => {
@@ -197,6 +256,17 @@ function setCourseMixture() {
     logVolatility: reference + Math.log(alpha),
   }));
   keyIndex = 1;
+  $('component-search').value = '';
+  renderMixture();
+}
+
+function setPinchMixture() {
+  const reference = hydrocarbons.find(({ name }) => name === 'Toluene').logVolatility;
+  selectedComponents = [
+    { name: 'Benzene', feedUnits: 500, logVolatility: reference + Math.log(2.5) },
+    { name: 'Toluene', feedUnits: 500, logVolatility: reference },
+  ];
+  keyIndex = 0;
   $('component-search').value = '';
   renderMixture();
 }

@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#0d171d">
   <title>Distillation theory · Distillation Lab</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="dof-proof.js?v=worked-dof" defer></script>
+  <link rel="stylesheet" href="theory-exercises.css?v=dof-exercises">
+  <script src="dof-proof.js?v=dof-exercises" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -23,7 +24,10 @@
   <main class="container study-page">
     <header class="study-intro">
       <h1>Distillation theory</h1>
-      <p>Follow the four-component example from the feed balance to the estimated number of stages. To follow along with the animations, choose <strong>Load course example</strong> in the Interactive Lab.</p>
+      <p>Start with one component balance, then follow the four-component example from the feed split to the estimated number of stages.</p>
+      <div class="study-actions">
+        <a class="primary-button" href="index.html#setup">Resume my experiment <span aria-hidden="true">→</span></a>
+      </div>
       <ul class="study-methods" aria-label="Shortcut design sequence">
         <li><a href="#fenske-theory"><strong>Fenske</strong><span>Fewest stages</span></a></li>
         <li><a href="#underwood-theory"><strong>Underwood</strong><span>Least reflux</span></a></li>
@@ -45,12 +49,44 @@
       <article class="study-content">
         <section class="panel study-section" id="choices">
           <h2>Degrees of freedom</h2>
-          <p>Subtract the number of independent equations from the number of unknowns. The result is the number of independent values you must supply. After specifying the feed and equipment conditions, this course model leaves four design choices. The lab starts those four fields with these example values.</p>
+          <div class="split-exercise">
+            <h3>Start with 25 mol of n-hexane</h3>
+            <p>Follow only the n-hexane in the feed. Every mole of it leaves in either the distillate or the bottoms.</p>
+            <p class="equation">25 mol = <var>D</var><sub>hex</sub> + <var>B</var><sub>hex</sub></p>
+            <dl class="split-destinations">
+              <div><dt>Distillate, <var>D</var><sub>hex</sub></dt><dd id="split-distillate">Unknown</dd></div>
+              <div><dt>Bottoms, <var>B</var><sub>hex</sub></dt><dd id="split-bottoms">Unknown</dd></div>
+            </dl>
+            <div class="split-proportions" id="split-proportions" aria-hidden="true" hidden><i></i></div>
+            <div class="split-decision" id="split-decision" hidden>
+              <h4>Can you calculate both amounts from this balance alone?</h4>
+              <div class="split-actions">
+                <button class="quiet-button" id="split-enough" type="button">Yes, the balance is enough</button>
+                <button class="quiet-button" id="split-need-value" type="button">No, I need one more value</button>
+              </div>
+              <p class="split-feedback" id="split-feedback" role="status"></p>
+            </div>
+            <div class="split-decision" id="split-recovery" hidden>
+              <h4>Choose the recovery to distillate</h4>
+              <p>Recovery is the share of the incoming n-hexane you want in the distillate.</p>
+              <div class="split-actions">
+                <button class="quiet-button" type="button" data-recovery="80" aria-pressed="false">80% recovery</button>
+                <button class="quiet-button" type="button" data-recovery="95" aria-pressed="false">95% recovery</button>
+              </div>
+              <p class="equation" id="split-calculation" role="status"></p>
+            </div>
+            <details class="reasoning" id="split-worked-example">
+              <summary>Read the worked split</summary>
+              <p>Both 15 + 10 and 20 + 5 add to 25 mol. One equation for two unknowns leaves one degree of freedom. If you specify 95% recovery to distillate, <var>D</var><sub>hex</sub> = 25 × 0.95 = 23.75 mol. The balance then gives <var>B</var><sub>hex</sub> = 25 − 23.75 = 1.25 mol.</p>
+            </details>
+          </div>
+          <h3>What does the whole column need?</h3>
+          <p>To count the choices left to you, subtract the number of independent equations from the number of unknowns. After fixing the feed and equipment conditions, the course column has four degrees of freedom. The lab fills in example values for these choices.</p>
           <dl class="study-facts">
-            <div><dt>Light-key recovery</dt><dd>Send 95% of the n-hexane in the feed to the distillate.</dd></div>
-            <div><dt>Heavy-key recovery</dt><dd>Send 96% of the n-heptane in the feed to the bottoms.</dd></div>
-            <div><dt>Operating reflux</dt><dd>Set the operating reflux ratio to 1.50 times the minimum reflux ratio.</dd></div>
-            <div><dt>Feed tray position</dt><dd>Place the feed near the middle of the estimated trays.</dd></div>
+            <div><dt>Light-key recovery</dt><dd>Choose how much of the n-hexane goes to the distillate. Its remaining amount follows from the n-hexane balance.</dd></div>
+            <div><dt>Heavy-key recovery</dt><dd>Choose how much of the n-heptane goes to the bottoms. Its remaining amount follows from the n-heptane balance.</dd></div>
+            <div><dt>Operating reflux</dt><dd>Choose how much condensed liquid to return per mole of distillate.</dd></div>
+            <div><dt>Feed tray position</dt><dd>Choose where the feed enters to divide the estimated trays above and below it.</dd></div>
           </dl>
           <p>Feed composition and quality define the problem. In a four-component feed, three mole fractions are independent because the fourth follows from the requirement that they sum to one. Changing the feed creates a new case with the same four design choices.</p>
           <p><a href="#dof-calculation">See the course count by equipment and constraint</a></p>
@@ -58,7 +94,7 @@
 
         <section class="panel study-section" id="balance">
           <h2>Split the feed by component</h2>
-          <p>Start with 100 mol, with 25 mol of each hydrocarbon. A key recovery is the fraction of that component in the feed that reaches its specified product. For example, 25 × 0.95 = 23.75 mol of n-hexane goes to the distillate. The remaining 1.25 mol goes to the bottoms.</p>
+          <p>Use 100 mol of feed with 25 mol of each hydrocarbon. Apply 95% light-key recovery to the distillate and 96% heavy-key recovery to the bottoms. The shortcut assigns the more volatile n-pentane to the distillate and the less volatile n-octane to the bottoms.</p>
           <table class="study-table">
             <caption>Component balance on a 100 mol feed basis</caption>
             <thead><tr><th scope="col">Component</th><th scope="col">Feed (mol)</th><th scope="col">Distillate (mol)</th><th scope="col">Bottoms (mol)</th></tr></thead>
@@ -111,14 +147,35 @@
         <section class="panel dof-proof" id="dof-calculation" aria-labelledby="dof-proof-title">
           <h2 id="dof-proof-title">Worked degrees-of-freedom calculation</h2>
           <p>Degrees of freedom equal unknowns minus independent equations. This count uses the course column with a rectifying section, a stripping section, one feed tray, a condenser, a reflux drum that splits liquid, and an equilibrium reboiler.</p>
+          <h3>Start with one equilibrium tray</h3>
+          <p>Let <var>C</var> be the number of components (currently <strong id="dof-components">4</strong>). Two streams enter an ordinary tray, and two leave it. Each stream contributes <var>C</var> + 2 variables for its flow, <var>C</var> − 1 independent mole fractions, temperature, and pressure.</p>
+          <dl class="tray-count">
+            <div>
+              <dt>Count the unknowns</dt>
+              <dd>4 streams plus the tray temperature, pressure, and heat duty.</dd>
+              <dd class="tray-count-math">4(<var>C</var> + 2) + 3 = 4<var>C</var> + 11</dd>
+            </div>
+            <div>
+              <dt>Count the independent equations</dt>
+              <dd><var>C</var> component balances, 1 energy balance, <var>C</var> equilibrium relations, and 4 equations matching outlet temperature and pressure to the tray.</dd>
+              <dd class="tray-count-math"><var>C</var> + 1 + <var>C</var> + 4 = 2<var>C</var> + 5</dd>
+            </div>
+          </dl>
+          <p class="equation">(4<var>C</var> + 11) − (2<var>C</var> + 5) = 2<var>C</var> + 6</p>
+          <p id="dof-tray-example">With four components, one tray has 27 unknowns and 13 independent equations. That leaves 14 degrees of freedom.</p>
+
           <h3>Assemble the column</h3>
-          <p>Let <var>C</var> be the number of components (currently <strong id="dof-components">4</strong>), and let <var>T</var> be the number of rectifying and stripping trays combined, excluding the feed tray and reboiler. The standalone counts use the course convention.</p>
-          <dl id="unit-counts"></dl>
+          <p>Let <var>T</var> be the number of rectifying and stripping trays combined, excluding the feed tray and reboiler. Before connecting the equipment, count each unit on its own.</p>
+          <dl id="unit-counts">
+            <div><dt>Equilibrium tray</dt><dd>2C + 6 = <span id="dof-equilibrium-tray">14</span></dd></div>
+            <div><dt>Feed tray</dt><dd>3C + 8 = <span id="dof-feed-tray">20</span></dd></div>
+            <div><dt>Condenser and reboiler, each</dt><dd>C + 4 = <span id="dof-condenser-reboiler">8</span></dd></div>
+            <div><dt>Reflux splitter</dt><dd>C + 5 = <span id="dof-splitter">9</span></dd></div>
+          </dl>
           <details class="reasoning">
-            <summary>Count the unknowns and equations in each unit</summary>
-            <p>Each stream has <var>C</var> + 2 unknowns. Count its total flow, <var>C</var> − 1 independent mole fractions, temperature, and pressure. Each unit adds its own temperature, pressure, and heat duty. Each outlet shares the unit temperature and pressure, giving two equations per outlet.</p>
+            <summary>Count the unknowns and equations in the other units</summary>
+            <p>Each unit adds its own temperature, pressure, and heat duty. Each outlet shares the unit temperature and pressure, giving two equations per outlet.</p>
             <ul>
-              <li><strong>Equilibrium tray.</strong> Four streams give 4(<var>C</var> + 2) + 3 unknowns. Subtract <var>C</var> component balances, one energy balance, <var>C</var> phase equilibrium relations, and four outlet temperature and pressure equations. The difference is 2<var>C</var> + 6.</li>
               <li><strong>Feed tray.</strong> Adding a feed stream adds <var>C</var> + 2 unknowns. The same equations apply, so the difference is 3<var>C</var> + 8.</li>
               <li><strong>Equilibrium reboiler.</strong> One inlet and two outlets give 3(<var>C</var> + 2) + 3 unknowns. Subtract the same 2<var>C</var> + 5 equations as for an equilibrium tray. The difference is <var>C</var> + 4.</li>
               <li><strong>Total condenser.</strong> One vapor inlet and one liquid outlet give 2(<var>C</var> + 2) + 3 unknowns. The <var>C</var> component balances, energy balance, and two outlet temperature and pressure equations leave <var>C</var> + 4. The saturation condition for the liquid outlet is specified later.</li>
@@ -134,10 +191,10 @@
 
           <div class="section-top proof-heading">
             <h3>Apply the specifications</h3>
-            <button class="quiet-button" id="proof-next" type="button">Step through the count</button>
+            <button class="quiet-button" id="proof-next" type="button" hidden>Step through the count</button>
           </div>
-          <div class="proof-readout" id="proof-current" role="status">With C = 4, start with 2T + 17 remaining choices.</div>
-          <table class="proof-table">
+          <div class="proof-readout" id="proof-current" role="status" hidden></div>
+          <table class="proof-table" id="proof-table">
             <thead><tr><th scope="col">Specification</th><th scope="col">Uses</th><th scope="col">DOF left</th></tr></thead>
             <tbody>
               <tr><th scope="row">Pressure and heat duty for each section tray</th><td>2T</td><td><span id="dof-after-trays">17</span></td></tr>
@@ -148,8 +205,10 @@
               <tr><th scope="row">Saturated liquid from the total condenser</th><td>1</td><td><strong>4</strong></td></tr>
             </tbody>
           </table>
-          <p>After specifying tray pressures and duties, the remaining count is (<var>C</var> + 13) − (<var>C</var> + 2) − 1 − 2 − 3 − 1 = 4. Increasing the number of components adds the same number of variables to the inlet specification as to the column count.</p>
-          <p>The four remaining choices are the light- and heavy-key recoveries, the operating reflux multiplier, and the feed tray position. The Interactive Lab supplies initial values for all four. Enter a valid feed to calculate the limits for your case. For comparison, the course simulation case specifies the two section tray counts, distillate flow, and operating reflux ratio.</p>
+          <div id="proof-conclusion">
+            <p>After specifying tray pressures and duties, the remaining count is (<var>C</var> + 13) − (<var>C</var> + 2) − 1 − 2 − 3 − 1 = 4. Increasing the number of components adds the same number of variables to the inlet specification as to the column count.</p>
+            <p>The <a href="#choices">four remaining choices</a> are the light- and heavy-key recoveries, the operating reflux multiplier, and the feed tray position. For comparison, the course simulation case specifies the two section tray counts, distillate flow, and operating reflux ratio.</p>
+          </div>
 
           <h3>Why the inlet is editable</h3>
           <p>The inlet uses <var>C</var> + 2 specifications. Choose a total flow, <var>C</var> − 1 independent mole fractions, and two thermal-state properties, such as temperature and pressure. Editing those given values defines a new feed case with the same number of column design choices. The lab fixes a 100 mol basis, treats the relative volatilities as inputs, and lets you specify feed quality <var>q</var> directly. A flash calculation can estimate the liquid fraction of a partially vaporized feed from its composition, temperature, and pressure.</p>
@@ -157,7 +216,7 @@
             <li><strong>Composition.</strong> With four components, three feed mole fractions are independent. The fourth equals 100% minus their sum. The lab fills in the final fraction to keep the total at 100%. At fixed recoveries, a different feed composition changes the product flows and compositions and can change minimum reflux.</li>
             <li><strong>Feed quality.</strong> Changing <var>q</var> changes the right-hand side 1 − <var>q</var> of Underwood’s feed equation. It can therefore change the minimum reflux and the operating stage estimate. With key recoveries and relative volatilities held fixed, Fenske’s minimum stages stay the same.</li>
           </ul>
-          <a href="index.html#column-form">Back to the inlet and design inputs</a>
+          <a href="index.html#setup">Resume my experiment</a>
         </section>
       </article>
     </div>

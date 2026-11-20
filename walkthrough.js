@@ -19,7 +19,7 @@ const walkthroughSteps = [
   {
     element: $('mixture-picker-step'),
     title: 'Build the feed',
-    instruction: 'Load the four-component course example, or search for and add at least two hydrocarbons.',
+    instruction: 'Choose an example or search for and add at least two hydrocarbons.',
     reason: 'To estimate trays and reflux, start with what enters the column. The feed composition tells you what is available to separate.',
     check() {
       const count = feedAndKeyInputs().componentInputs.length;
@@ -46,9 +46,9 @@ const walkthroughSteps = [
   },
   {
     element: $('operating-controls'),
-    title: 'Choose reflux and a feed tray',
-    instruction: 'Try 1.50 times minimum reflux and start with the feed near the middle at 0.50.',
-    reason: 'Underwood’s minimum is the pinch limit. Use more reflux to reach the target in a finite number of stages. The feed location divides the trays above and below the inlet.',
+    title: 'Choose reflux and feed tray',
+    instruction: 'Try 1.50 × minimum reflux and a middle feed position (0.50).',
+    reason: 'Above the pinch limit, Gilliland can estimate a finite stage count. The feed position divides the estimated trays.',
     editSetup: true,
     check() {
       if (!$('multiple-value').validity.valid) return 'Enter a reflux multiplier from 1.05 to 5 in 0.01 steps.';
@@ -299,7 +299,7 @@ document.addEventListener('keydown', (event) => {
 }, true);
 
 function offerWalkthroughOnEntry() {
-  if ((!location.hash || location.hash === '#setup') && !alreadyOfferedWalkthrough() && !currentResult?.point) {
+  if (location.hash === '#setup' && !alreadyOfferedWalkthrough() && !feedAndKeyInputs().componentInputs.length) {
     openWalkthrough();
   }
 }
